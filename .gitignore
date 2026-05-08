@@ -1,0 +1,25 @@
+# Python virtual environment
+venv/
+ENV/
+env/
+
+# Environment variables (Secrets)
+# මේක ඇතුළේ තමයි ඔයාගේ YouTube API Key එක තියෙන්නේ. මේක කවදාවත් Git යවන්න එපා!
+.env
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDE settings
+.vscode/
+.idea/
+
+# Flask/Dash specific
+instance/
+.web/
+
+# OS related files
+.DS_Store
+Thumbs.db
