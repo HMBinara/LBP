@@ -7,13 +7,13 @@ function App() {
   // 1: Topic Input, 2: Quiz, 3: Final Dashboard
   const [step, setStep] = useState(1);
 
-  // Backend එකෙන් ලැබෙන තාවකාලික දත්ත සහ Final Syllabus එක තියාගන්න
+  // Store temporary session data from backend and the final study plan
   const [sessionData, setSessionData] = useState(null);
   const [finalPlan, setFinalPlan] = useState(null);
 
   return (
-    <div className="min-h-screen bg-brand-dark text-white font-sans selection:bg-brand-orange/30">
-      {/* Step 1: User ගෙන් විස්තර ගන්නා තැන */}
+    <div className="min-h-screen bg-white text-gray-900 font-sans selection:bg-orange-200 theme-light gradient-primary">
+      {/* Step 1: Collect details from the user */}
       {step === 1 && (
         <Hero
           setStep={setStep}
@@ -21,7 +21,7 @@ function App() {
         />
       )}
 
-      {/* Step 2: AI එක හදපු Quiz එක පෙන්වන තැන */}
+      {/* Step 2: Show the AI-generated quiz */}
       {step === 2 && (
         <Quiz
           sessionData={sessionData}
@@ -30,7 +30,7 @@ function App() {
         />
       )}
 
-      {/* Step 3: Final Personalized Dashboard එක */}
+      {/* Step 3: Final Personalized Dashboard */}
       {step === 3 && (
         <Dashboard studyPlan={finalPlan} />
       )}
