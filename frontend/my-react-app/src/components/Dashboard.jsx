@@ -4,15 +4,17 @@ import { Calendar, CheckSquare, PlayCircle, Award, Clock, ArrowLeft, BookOpen, S
 
 export default function Dashboard({ finalPlan, setStep }) {
     // Backend එකෙන් Quiz එක ඉවර වුණාම ලැබෙන data වෙන් කර ගැනීම
-    const assessment = finalPlan?.assessment || { level: 'Beginner', score: 0, total: 10 };
-    const studyPlan = finalPlan?.studyPlan || { plan_name: 'Custom Roadmap', days: [] };
+    const skillLevel = finalPlan?.skill_level || 'Beginner';
+    const score = finalPlan?.score ?? 0;
+    const roadmap = Array.isArray(finalPlan?.roadmap) ? finalPlan.roadmap : [];
+    const resources = Array.isArray(finalPlan?.resources) ? finalPlan.resources : [];
     const topic = finalPlan?.topic || 'Selected Topic';
-    const totalDays = finalPlan?.duration || studyPlan?.days?.length || 0;
+    const totalDays = finalPlan?.duration || roadmap.length || 0;
 
     const [selectedDayIndex, setSelectedDayIndex] = useState(0);
     const [completedTasks, setCompletedTasks] = useState({});
 
-    const currentDayData = studyPlan?.days?.[selectedDayIndex] || null;
+    const currentDayData = roadmap?.[selectedDayIndex] || null;
 
     // Task එකක් check / uncheck කරන කොට state එක update කිරීම
     const toggleTask = (dayNumber, taskIndex) => {
@@ -35,7 +37,7 @@ export default function Dashboard({ finalPlan, setStep }) {
     if (!studyPlan || !studyPlan.days || studyPlan.days.length === 0) {
         return (
             <main className="p-6 md:p-12 max-w-4xl mx-auto text-center card-light mt-10">
-                <h3 className="text-xl font-bold text-gray-800 mb-2">No Active Study Plan</h3>
+                <h3 className="text-xl font-bold text-gray-800 mb-2">No Active Study Roadmap</h3>
                 <p className="text-gray-600 mb-6">Please complete the assessment quiz first to generate your custom dashboard.</p>
                 <button onClick={() => setStep(1)} className="btn-primary">Generate Plan</button>
             </main>
@@ -57,7 +59,7 @@ export default function Dashboard({ finalPlan, setStep }) {
                         <ArrowLeft className="w-4 h-4" /> Reset & Start New
                     </button>
                     <h1 className="text-3xl font-extrabold text-highlight-dark bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
-                        {studyPlan.plan_name}
+                        {`${topic} Learning Roadmap`}
                     </h1>
                     <p className="text-muted">Mastering <span className="font-semibold text-gray-700">{topic}</span> dynamically</p>
                 </div>
@@ -68,7 +70,7 @@ export default function Dashboard({ finalPlan, setStep }) {
                         <Award className="w-5 h-5 text-highlight-orange" />
                         <div>
                             <p className="text-xs text-gray-400 font-medium">Diagnosed Level</p>
-                            <p className="text-sm font-bold text-highlight-dark">{assessment.level} ({assessment.score}/{assessment.total})</p>
+                            <p className="text-sm font-bold text-highlight-dark">{skillLevel} ({score}/10)</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-3 px-4 py-2 bg-white/80 backdrop-blur-md rounded-xl border border-gray-100 shadow-sm">
@@ -87,7 +89,7 @@ export default function Dashboard({ finalPlan, setStep }) {
                 {/* Left Sidebar: Timeline Days Navigation (4 Cols) */}
                 <div className="lg:col-span-4 space-y-3 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
                     <p className="text-xs font-bold uppercase tracking-wider text-gray-400 px-1">Your Roadmap Plan</p>
-                    {studyPlan.days.map((day, index) => {
+                    {roadmap.map((day, index) => {
                         const isSelected = selectedDayIndex === index;
                         const isDayRevision = day.day > (totalDays - 2);
 
@@ -97,14 +99,14 @@ export default function Dashboard({ finalPlan, setStep }) {
                                 whileHover={{ x: 4 }}
                                 onClick={() => setSelectedDayIndex(index)}
                                 className={`w-full p-4 rounded-xl text-left border transition-all flex items-center justify-between ${isSelected
-                                        ? 'bg-gradient-to-r from-orange-50 to-orange-100/50 border-highlight-orange/50 shadow-sm'
-                                        : 'bg-white border-gray-100 hover:border-orange-200'
+                                    ? 'bg-gradient-to-r from-orange-50 to-orange-100/50 border-highlight-orange/50 shadow-sm'
+                                    : 'bg-white border-gray-100 hover:border-orange-200'
                                     }`}
                             >
                                 <div className="flex items-center gap-3 min-w-0">
                                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm flex-shrink-0 ${isSelected
-                                            ? 'bg-highlight-orange text-white'
-                                            : isDayRevision ? 'bg-purple-50 text-purple-600 border border-purple-100' : 'bg-gray-50 text-gray-600'
+                                        ? 'bg-highlight-orange text-white'
+                                        : isDayRevision ? 'bg-purple-50 text-purple-600 border border-purple-100' : 'bg-gray-50 text-gray-600'
                                         }`}>
                                         D{day.day}
                                     </div>
@@ -222,13 +224,13 @@ export default function Dashboard({ finalPlan, setStep }) {
                                                     key={tIdx}
                                                     onClick={() => toggleTask(currentDayData.day, tIdx)}
                                                     className={`p-3.5 rounded-xl border transition-all flex items-start gap-3 cursor-pointer ${isChecked
-                                                            ? 'bg-slate-50/80 border-gray-200/60 opacity-60'
-                                                            : isRevisionDay ? 'bg-white border-purple-100 hover:border-purple-300' : 'bg-white border-gray-100 hover:border-orange-200'
+                                                        ? 'bg-slate-50/80 border-gray-200/60 opacity-60'
+                                                        : isRevisionDay ? 'bg-white border-purple-100 hover:border-purple-300' : 'bg-white border-gray-100 hover:border-orange-200'
                                                         }`}
                                                 >
                                                     <div className={`mt-0.5 w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 transition-colors ${isChecked
-                                                            ? 'bg-highlight-blue border-highlight-blue text-white'
-                                                            : isRevisionDay ? 'border-purple-300' : 'border-gray-300'
+                                                        ? 'bg-highlight-blue border-highlight-blue text-white'
+                                                        : isRevisionDay ? 'border-purple-300' : 'border-gray-300'
                                                         }`}>
                                                         {isChecked && <span className="text-xs font-bold">✓</span>}
                                                     </div>
@@ -248,6 +250,26 @@ export default function Dashboard({ finalPlan, setStep }) {
                 </div>
 
             </div>
+
+            {resources.length > 0 && (
+                <section className="mt-8 card-light">
+                    <h3 className="text-xl font-bold text-highlight-dark mb-4">Curated Resources</h3>
+                    <div className="grid gap-4 md:grid-cols-2">
+                        {resources.map((resource, index) => (
+                            <a
+                                key={index}
+                                href={resource.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block p-4 rounded-xl border border-gray-200 hover:border-orange-300 bg-white transition-all"
+                            >
+                                <h4 className="font-semibold text-highlight-dark mb-1">{resource.title}</h4>
+                                <p className="text-sm text-muted">{resource.reason_for_picking}</p>
+                            </a>
+                        ))}
+                    </div>
+                </section>
+            )}
         </main>
     );
 }

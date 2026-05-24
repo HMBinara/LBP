@@ -5,7 +5,22 @@ import axios from 'axios';
 
 export default function Quiz({ sessionData, setStep, setFinalPlan }) {
     // Backend එකෙන් ලැබුණු ප්‍රශ්න 10 වෙන් කර ගැනීම
-    const quizQuestions = sessionData?.quiz?.quiz || [];
+    const normalizeQuestions = (rawQuiz) => {
+        if (rawQuiz && Array.isArray(rawQuiz.quiz)) return rawQuiz.quiz;
+        if (Array.isArray(rawQuiz)) return rawQuiz;
+        if (typeof rawQuiz === 'string') {
+            try {
+                const parsed = JSON.parse(rawQuiz);
+                if (parsed && Array.isArray(parsed.quiz)) return parsed.quiz;
+                if (Array.isArray(parsed)) return parsed;
+            } catch {
+                return [];
+            }
+        }
+        return [];
+    };
+
+    const quizQuestions = normalizeQuestions(sessionData?.quiz);
     const sessionId = sessionData?.session_id;
 
     const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -48,11 +63,18 @@ export default function Quiz({ sessionData, setStep, setFinalPlan }) {
                 answers: finalAnswers
             });
 
-            if (response.data.status === 'completed') {
+            if (response.data.status === 'completed' || response.data.status === 'success') {
+                const roadmap = Array.isArray(response.data.roadmap) ? response.data.roadmap : [];
+                if (roadmap.length === 0) {
+                    throw new Error('Study roadmap was not generated correctly.');
+                }
+
                 // Backend එකෙන් ලැබෙන assessment result සහ final study plan එක state එකට දමනවා
                 setFinalPlan({
-                    assessment: response.data.assessment,
-                    studyPlan: response.data.study_plan,
+                    score: response.data.score,
+                    skill_level: response.data.skill_level,
+                    roadmap,
+                    resources: response.data.resources || sessionData?.curated_resources || [],
                     topic: sessionData?.user_input?.topic,
                     duration: sessionData?.user_input?.duration_days
                 });

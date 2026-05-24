@@ -47,16 +47,39 @@ const Hero = ({ setStep, setSessionData }) => {
             // Backend එකේ /start-journey endpoint එකට සම්බන්ධ වීම
             const response = await axios.post('http://localhost:5000/start-journey', payload);
 
+            const normalizeQuiz = (rawQuiz) => {
+                if (rawQuiz && Array.isArray(rawQuiz.quiz) && rawQuiz.quiz.length > 0) return rawQuiz;
+                if (Array.isArray(rawQuiz) && rawQuiz.length > 0) return { quiz: rawQuiz };
+                if (typeof rawQuiz === 'string') {
+                    try {
+                        const parsed = JSON.parse(rawQuiz);
+                        if (parsed && Array.isArray(parsed.quiz) && parsed.quiz.length > 0) return parsed;
+                        if (Array.isArray(parsed) && parsed.length > 0) return { quiz: parsed };
+                    } catch {
+                        return null;
+                    }
+                }
+                return null;
+            };
+
             if (response.data.status === 'success') {
+                const normalizedQuiz = normalizeQuiz(response.data.quiz);
+                if (!normalizedQuiz) {
+                    setError('Quiz generation failed. Please try again in a few moments.');
+                    return;
+                }
+
                 // Backend එකෙන් ලැබෙන session_id සහ quiz data ටික parent state එකට දානවා
                 setSessionData({
                     session_id: response.data.session_id,
-                    quiz: response.data.quiz,
+                    quiz: normalizedQuiz,
                     user_input: payload // පස්සේ planner එකට පාවිච්චි කරන්න සුරැකීම
                 });
 
                 // කෙලින්ම Quiz Phase (Step 2) එකට මාරු කිරීම
                 setStep(2);
+            } else {
+                setError(response.data?.message || 'Failed to start quiz journey.');
             }
         } catch (error) {
             console.error("Error starting journey:", error);

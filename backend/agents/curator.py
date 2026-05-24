@@ -1,14 +1,13 @@
 import os
-import google.generativeai as genai
 from googleapiclient.discovery import build
 from dotenv import load_dotenv
 import json
 import re
+from agents.model_utils import generate_with_model_fallbacks
 
 load_dotenv()
 
 # Setup APIs
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 youtube = build('youtube', 'v3', developerKey=os.getenv("YOUTUBE_API_KEY"))
 
 def search_youtube(query, max_results=12):
@@ -41,12 +40,11 @@ def search_youtube(query, max_results=12):
         print(f"YouTube API Error: {e}")
         return []
 
-def get_curated_resources(user_data):
+def get_curated_resources(topic, skill_level, user_data):
     """
     සොයාගත් YouTube වීඩියෝ සමූහය Gemini AI ලවා විශ්ලේෂණය කර,
     පරිශීලකයාගේ ඉලක්කයට වඩාත්ම ගැළපෙන හොඳම වීඩියෝ 7-8 වෙන් කර ගැනීම.
     """
-    topic = user_data.get('topic')
     sub_topics = ", ".join(user_data.get('sub_topics', [])) if isinstance(user_data.get('sub_topics'), list) else user_data.get('sub_topics', '')
     goal = user_data.get('goal')
     
@@ -55,13 +53,11 @@ def get_curated_resources(user_data):
     raw_resources = search_youtube(search_query)
     
     if not raw_resources:
-        return []
+        raise RuntimeError("Unable to fetch YouTube resources for the requested topic.")
 
-    # 2. Gemini ලවා filter කරගැනීම
-    model = genai.GenerativeModel('gemini-1.5-flash')
-    
     prompt = f"""
     User wants to master the topic: '{topic}'.
+    Diagnosed skill level: {skill_level}.
     Specific Sub-topics specified: {sub_topics}
     Primary Educational/Career Goal: {goal}
     Duration allocated: {user_data.get('duration_days')} days
@@ -84,7 +80,7 @@ def get_curated_resources(user_data):
     """
     
     try:
-        response = model.generate_content(prompt)
+        response = generate_with_model_fallbacks(prompt)
         response_text = response.text
         
         # Regex එක භාවිතයෙන් JSON array එක පමණක් වෙන් කර ගැනීම
@@ -98,9 +94,4 @@ def get_curated_resources(user_data):
             
     except Exception as e:
         print(f"Error in Curator Agent Filtering: {e}")
-        # Fallback: කිසියම් හේතුවකින් AI එක ක්‍රැෂ් වුවහොත් raw වීඩියෝ වලින් මුල් 6 කෙලින්ම යවනවා
-        return [{
-            "title": res["title"],
-            "url": res["url"],
-            "reason_for_picking": "Fallback direct selection"
-        } for res in raw_resources[:6]]
+        raise RuntimeError(f"Curator agent failed to generate resources: {e}")
