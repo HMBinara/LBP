@@ -3,24 +3,30 @@ import os
 import json
 
 def generate_assessment_quiz(topic, sub_topics, curated_content):
+    # Gemini Model එක active කරගැනීම
     model = genai.GenerativeModel('gemini-1.5-flash')
     
-    # Prompt එක හදන්නේ user දැනටමත් දන්න දේ මැන ගන්න
+    # AI එකට දෙන ලොජික් එක: ප්‍රශ්න 10ක් විවිධ මට්ටම් වලින් හදන්න කීම
     prompt = f"""
-    Based on the topic '{topic}' and sub-topics {sub_topics}, generate a diagnostic quiz.
-    Use these curated resources for context: {curated_content}
+    You are an expert Educational Assessor. Your task is to generate a comprehensive diagnostic quiz based on the topic '{topic}' and sub-topics {sub_topics}.
+    Use these curated learning resources for content validation and context: {curated_content}
     
-    Requirement:
-    - Create 5 Multiple Choice Questions (MCQs).
-    - Vary the difficulty.
-    - Return strictly in JSON format:
+    Requirement Strategy:
+    - Create exactly 10 Multiple Choice Questions (MCQs).
+    - The quiz MUST have a mixed difficulty distribution to programmatically test all skill levels:
+      * Questions 1 to 3: Easy / Fundamental level (to test Beginner concepts).
+      * Questions 4 to 7: Medium / Conceptual level (to test Intermediate understanding).
+      * Questions 8 to 10: Hard / Practical or Advanced level (to test deep expertise).
+    - Provide exactly 4 unique choices/options for each question.
+    
+    Return the response STRICTLY in valid JSON format only, without any markdown formatting or wrapper code. Use this exact structure:
     {{
       "quiz": [
         {{
           "id": 1,
-          "question": "question text",
-          "options": ["A", "B", "C", "D"],
-          "answer": "correct option"
+          "question": "The question text here",
+          "options": ["Option A", "Option B", "Option C", "Option D"],
+          "answer": "The exact correct option text"
         }}
       ]
     }}
@@ -28,24 +34,42 @@ def generate_assessment_quiz(topic, sub_topics, curated_content):
     
     response = model.generate_content(prompt)
     
-    # Gemini සමහර වෙලාවට ```json ... 
-    #කියලා දෙන නිසා ඒක clean කරගන්නවා
+    # Gemini වෙතින් එන text එක පිරිසිදු කර ගැනීම (Markdown backticks අයින් කිරීම)
     clean_json = response.text.replace('```json', '').replace('```', '').strip()
-    return json.loads(clean_json)
+    
+    try:
+        return json.loads(clean_json)
+    except Exception as e:
+        # JSON parse වෙන්න බැරි වුණොත් fallback එකක් විදිහට error එක log කරලා හිස් ව්‍යුහයක් යවනවා
+        print(f"Error parsing quiz JSON: {str(e)}")
+        raise e
 
 def evaluate_level(user_answers, quiz_data):
-    # මෙතනදී user ගේ score එක බලලා level එකක් දෙනවා
+    """
+    පරිශීලකයා ලබාදුන් පිළිතුරු 10 ඇගයීමට ලක් කර ලකුණු ප්‍රමාණය මත
+    ඔවුන් සිටින සැබෑ මට්ටම (Level) ස්වයංක්‍රීයව ගණනය කිරීම.
+    """
     score = 0
-    total = len(quiz_data['quiz'])
+    quiz_list = quiz_data.get('quiz', [])
+    total = len(quiz_list)
     
-    # සරලව ලකුණු ගණනය කිරීම
-    # (පසුව AI එක ලවාම 'මොන කොටසද මදි' කියලා analyze කරවන්න පුළුවන්)
+    # ප්‍රශ්න 10 සඳහා ලකුණු එකතු කිරීම
     for i in range(total):
-        if user_answers[i] == quiz_data['quiz'][i]['answer']:
-            score += 1
-            
-    if score <= 2: level = "Beginner"
-    elif score <= 4: level = "Intermediate"
-    else: level = "Advanced"
-    
-    return {"score": score, "total": total, "level": level}
+        # Frontend එකෙන් එන answers array එකේ පිළිවෙළ සහ quiz එකේ පිළිවෙළ සසඳා බැලීම
+        if i < len(user_answers):
+            if user_answers[i] == quiz_list[i]['answer']:
+                score += 1
+                
+    # ලකුණු 10න් ලැබෙන ප්‍රමාණය අනුව මට්ටම තීරණය කිරීම (Programmatic Level Assessment)
+    if score <= 3:
+        level = "Beginner"
+    elif score <= 7:
+        level = "Intermediate"
+    else:
+        level = "Advanced"
+        
+    return {
+        "score": score, 
+        "total": total, 
+        "level": level
+    }

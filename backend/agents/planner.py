@@ -12,32 +12,40 @@ genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 def generate_study_plan(user_context, curated_resources, assessment_result):
     model = genai.GenerativeModel('gemini-1.5-flash')
     
+    total_days = int(user_context['duration_days'])
+    
+    # ලොජික් එක: දවස් 2ක් අඩු කරලා තමයි core සිලබස් එක ඉවර කරන්නේ
+    learning_days_limit = total_days - 2 if total_days > 2 else total_days
+    
     prompt = f"""
-    Create a highly structured daily study plan based on:
+    You are a Strategic Learning Architect. Your mission is to design a high-efficiency, personalized daily roadmap based on these details:
     - Topic: {user_context['topic']}
     - Sub-topics: {user_context['sub_topics']}
-    - Goal: {user_context['goal']}
-    - Duration: {user_context['duration_days']} days
+    - Primary Goal: {user_context['goal']}
+    - Total Duration: {total_days} days
     - Daily Availability: {user_context['daily_hours']} hours
-    - User Skill Level: {assessment_result['level']} (Score: {assessment_result['score']}/{assessment_result['total']})
-    - Available Resources: {curated_resources}
+    - User Diagnosed Level: {assessment_result['level']} (Quiz Score: {assessment_result['score']}/{assessment_result['total']})
+    - Curated Video Resources: {curated_resources}
 
-    Instructions:
-    1. Organize the content into exactly {user_context['duration_days']} days.
-    2. For each day, provide a 'focus' (Topic name), a 'video_url' from the resources provided, a list of 'tasks', and 'estimated_time'.
-    3. Ensure the pace matches the user's skill level.
-    4. Return strictly in valid JSON format.
+    STRICT OPERATIONAL CONSTRAINTS & TIMING LOGIC:
+    1. Early Completion Strategy: You MUST distribute and schedule all core theoretical concepts, sub-topics, and primary YouTube videos so that they are completely covered within the first {learning_days_limit} days.
+    2. Final Revision Buffer: The remaining final 2 days (Day {total_days - 1} and Day {total_days}) MUST contain ZERO new videos or new topics. Dedicate these 2 days strictly to intensive practical practice, mock exams, and customized revision questions focused specifically on achieving the user's primary goal: '{user_context['goal']}'.
+    3. Pacing: Match the difficulty of technical tasks to the diagnosed level ({assessment_result['level']}). If Beginner, tasks should be step-by-step; if Advanced, focus on architecture and bug fixing.
+    4. Link Mapping: Ensure the 'video_url' field maps to the most relevant links provided in the resource pool. For the final revision days, set 'video_url' to "" (empty string) as no new video is required.
 
-    JSON Structure Example:
+    Return strictly a valid JSON object following this exact template:
     {{
-      "plan_name": "Course Name",
+      "plan_name": "Course Title",
       "days": [
         {{
           "day": 1,
-          "focus": "Topic name",
-          "video_url": "link",
-          "tasks": ["Task 1", "Task 2"],
-          "estimated_time": "2 hours"
+          "focus": "Topic or core concept of the day",
+          "video_url": "URL from the resources",
+          "tasks": [
+            "Actionable task 1",
+            "Actionable task 2"
+          ],
+          "estimated_time": "{user_context['daily_hours']} hours"
         }}
       ]
     }}
@@ -47,18 +55,27 @@ def generate_study_plan(user_context, curated_resources, assessment_result):
         response = model.generate_content(prompt)
         response_text = response.text
         
-        # මචං මෙතන තමයි අර Error එක Fix කරන තැන:
-        # Regex පාවිච්චි කරලා ```json ... ``` ඇතුළේ තියෙන ටික විතරක් ගන්නවා.
+        # Regex එකෙන් JSON object එක විතරක් වෙන් කරලා ගැනීම
         json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
         
         if json_match:
             clean_json = json_match.group(0)
             return json.loads(clean_json)
         else:
-            # කෙලින්ම JSON එක ආවා නම්
             return json.loads(response_text.strip())
             
     except Exception as e:
         print(f"Error in Planner Agent: {e}")
-        # Error එකක් ආවොත් fallback එකක් විදිහට හිස් plan එකක් දෙනවා
-        return {"error": "Failed to generate plan", "details": str(e)}
+        return {
+            "error": "Failed to generate plan",
+            "details": str(e),
+            "days": [
+                {
+                    "day": 1,
+                    "focus": "Error generating adaptive roadmap",
+                    "video_url": "",
+                    "tasks": ["Please try again or check backend logs."],
+                    "estimated_time": "0 hours"
+                }
+            ]
+        }

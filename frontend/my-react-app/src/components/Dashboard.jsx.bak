@@ -1,0 +1,12 @@
+// Backup of Dashboard.jsx
+// Created before minimalizing to diagnose Vite parse errors.
+
+import React from 'react';
+
+export default function DashboardBackup() {
+  return (
+    <div>
+      Backup of Dashboard.jsx
+    </div>
+  );
+}
