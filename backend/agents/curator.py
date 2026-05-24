@@ -55,42 +55,74 @@ def get_curated_resources(topic, skill_level, user_data):
     if not raw_resources:
         raise RuntimeError("Unable to fetch YouTube resources for the requested topic.")
 
-    prompt = f"""
-    User wants to master the topic: '{topic}'.
-    Diagnosed skill level: {skill_level}.
-    Specific Sub-topics specified: {sub_topics}
-    Primary Educational/Career Goal: {goal}
-    Duration allocated: {user_data.get('duration_days')} days
-    
-    Here is a pool of raw YouTube search results:
-    {raw_resources}
-    
-    Task:
-    Filter and select the top 7 to 8 most educational, high-quality, and highly relevant videos that chronologically cover the topic and sub-topics.
-    
-    Return the result STRICTLY in valid JSON format as an array of objects. Do not include any markdown styling like ```json.
-    Use this exact JSON structure:
-    [
-      {{
-        "title": "Cleaned Video Title",
-        "url": "YouTube Video URL",
-        "reason_for_picking": "Short description of what concept this video covers"
-      }}
-    ]
-    """
-    
+        prompt = f"""
+        User wants to master the topic: '{topic}'.
+        Diagnosed skill level: {skill_level}.
+        Specific Sub-topics specified: {sub_topics}
+        Primary Educational/Career Goal: {goal}
+        Duration allocated: {user_data.get('duration_days')} days
+
+        Here is a pool of raw YouTube search results (title + video_id + url + description):
+        {raw_resources}
+
+        Task:
+        - From the pool above, select the top 7 to 8 videos that together form a chronological and pedagogically-sound sequence covering the topic and sub-topics.
+        - For each selected video, return exactly these fields: `type`, `title`, `embed_url`, `summary`.
+            * `type`: must be the literal string "youtube".
+            * `title`: cleaned human-friendly title.
+            * `embed_url`: the YouTube embed URL in the form https://www.youtube.com/embed/VIDEO_ID.
+            * `summary`: 1-2 sentence explanation of what the video teaches and why it was selected.
+
+        IMPORTANT: Return STRICTLY a JSON array (no markdown fences, no prose). Use this exact example structure:
+        [
+            {
+                "type": "youtube",
+                "title": "...",
+                "embed_url": "https://www.youtube.com/embed/VIDEO_ID",
+                "summary": "Short summary"
+            }
+        ]
+        """
+
     try:
         response = generate_with_model_fallbacks(prompt)
         response_text = response.text
         
-        # Regex එක භාවිතයෙන් JSON array එක පමණක් වෙන් කර ගැනීම
+        # Extract JSON array only and return.
         json_match = re.search(r'\[.*\]', response_text, re.DOTALL)
-        
         if json_match:
             clean_json = json_match.group(0)
-            return json.loads(clean_json)
+            parsed = json.loads(clean_json)
         else:
-            return json.loads(response_text.strip())
+            parsed = json.loads(response_text.strip())
+
+        # Normalize embed_url to ensure it's in embed format
+        normalized = []
+        for item in parsed:
+            try:
+                vid = item.get('embed_url') or item.get('video_id') or item.get('url')
+                # If it's a full watch URL, extract id
+                if vid and 'watch?v=' in vid:
+                    vid_id = vid.split('watch?v=')[-1].split('&')[0]
+                    embed = f"https://www.youtube.com/embed/{vid_id}"
+                elif vid and isinstance(vid, str) and len(vid) <= 20 and not vid.startswith('http'):
+                    # likely a raw id
+                    embed = f"https://www.youtube.com/embed/{vid}"
+                elif vid and vid.startswith('https://www.youtube.com/embed/'):
+                    embed = vid
+                else:
+                    embed = item.get('embed_url') or item.get('url') or ''
+
+                normalized.append({
+                    "type": "youtube",
+                    "title": item.get('title', '')[:240],
+                    "embed_url": embed,
+                    "summary": item.get('summary') or item.get('reason_for_picking') or item.get('description', '')[:400]
+                })
+            except Exception:
+                continue
+
+        return normalized
             
     except Exception as e:
         print(f"Error in Curator Agent Filtering: {e}")

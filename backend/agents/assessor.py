@@ -65,13 +65,14 @@ def evaluate_level(user_answers, quiz_data):
             if user_answers[i] == quiz_list[i]['answer']:
                 score += 1
                 
-    # ලකුණු 10න් ලැබෙන ප්‍රමාණය අනුව මට්ටම තීරණය කිරීම (Programmatic Level Assessment)
-    if score <= 3:
-        level = "Beginner"
+    # Exact buckets required by product:
+    # Beginner: 0-4, Intermediate: 5-7, Advanced: 8-10
+    if score <= 4:
+      level = "Beginner"
     elif score <= 7:
-        level = "Intermediate"
+      level = "Intermediate"
     else:
-        level = "Advanced"
+      level = "Advanced"
         
     return {
         "score": score, 

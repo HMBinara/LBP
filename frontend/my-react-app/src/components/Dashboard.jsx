@@ -1,22 +1,21 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calendar, CheckSquare, PlayCircle, Award, Clock, ArrowLeft, BookOpen, Sparkles } from 'lucide-react';
 
 export default function Dashboard({ finalPlan, setStep }) {
-    // Backend එකෙන් Quiz එක ඉවර වුණාම ලැබෙන data වෙන් කර ගැනීම
     const skillLevel = finalPlan?.skill_level || 'Beginner';
-    const score = finalPlan?.score ?? 0;
+    const score = Number.isFinite(finalPlan?.score) ? finalPlan.score : 0;
     const roadmap = Array.isArray(finalPlan?.roadmap) ? finalPlan.roadmap : [];
-    const resources = Array.isArray(finalPlan?.resources) ? finalPlan.resources : [];
     const topic = finalPlan?.topic || 'Selected Topic';
     const totalDays = finalPlan?.duration || roadmap.length || 0;
 
     const [selectedDayIndex, setSelectedDayIndex] = useState(0);
     const [completedTasks, setCompletedTasks] = useState({});
+    const [showRoadmap, setShowRoadmap] = useState(false);
 
     const currentDayData = roadmap?.[selectedDayIndex] || null;
+    const embedDay = useMemo(() => (totalDays >= 3 ? totalDays - 2 : totalDays), [totalDays]);
 
-    // Task එකක් check / uncheck කරන කොට state එක update කිරීම
     const toggleTask = (dayNumber, taskIndex) => {
         const key = `${dayNumber}-${taskIndex}`;
         setCompletedTasks(prev => ({
@@ -25,16 +24,16 @@ export default function Dashboard({ finalPlan, setStep }) {
         }));
     };
 
-    // YouTube URL එක embed URL එකකට හරවා ගැනීම (Player එක ඇතුළේ ප්ලේ වෙන්න)
-    const getEmbedUrl = (url) => {
+    const getEmbedUrl = (resource) => {
+        const url = resource?.embed_url || resource?.url || '';
         if (!url) return null;
+        if (url.includes('/embed/')) return url;
         const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
         const match = url.match(regExp);
         return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}` : null;
     };
 
-    // ආරක්ෂිත පියවරක්: කිසියම් හේතුවකින් plan එක load වී නොමැති නම්
-    if (!studyPlan || !studyPlan.days || studyPlan.days.length === 0) {
+    if (!finalPlan) {
         return (
             <main className="p-6 md:p-12 max-w-4xl mx-auto text-center card-light mt-10">
                 <h3 className="text-xl font-bold text-gray-800 mb-2">No Active Study Roadmap</h3>
@@ -44,12 +43,69 @@ export default function Dashboard({ finalPlan, setStep }) {
         );
     }
 
-    // අන්තිම දවස් 2 Revision ද කියලා check කරන ලොජික් එක
-    const isRevisionDay = currentDayData ? (currentDayData.day > (totalDays - 2)) : false;
+    if (!showRoadmap) {
+        return (
+            <main className="p-6 md:p-12 max-w-4xl mx-auto">
+                <div className="card-light rounded-3xl p-8 md:p-10 shadow-sm border border-gray-100">
+                    <div className="flex items-center gap-2 mb-6">
+                        <Sparkles className="text-highlight-orange" size={20} />
+                        <span className="text-highlight-orange font-bold tracking-widest text-sm uppercase">Assessment Complete</span>
+                    </div>
+
+                    <h1 className="text-3xl md:text-4xl font-extrabold text-highlight-dark mb-3">
+                        Your Skill Level is Ready
+                    </h1>
+                    <p className="text-muted text-lg mb-8">
+                        We analyzed your 10 quiz answers and calculated your learning level. Click below to generate your personalized roadmap.
+                    </p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                        <div className="px-4 py-4 bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center gap-3">
+                            <Award className="w-5 h-5 text-highlight-orange" />
+                            <div>
+                                <p className="text-xs text-gray-400 font-medium">Skill Level</p>
+                                <p className="text-sm font-bold text-highlight-dark">{skillLevel}</p>
+                            </div>
+                        </div>
+                        <div className="px-4 py-4 bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center gap-3">
+                            <CheckSquare className="w-5 h-5 text-highlight-blue" />
+                            <div>
+                                <p className="text-xs text-gray-400 font-medium">Score</p>
+                                <p className="text-sm font-bold text-highlight-dark">{score}/10</p>
+                            </div>
+                        </div>
+                        <div className="px-4 py-4 bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center gap-3">
+                            <Calendar className="w-5 h-5 text-emerald-500" />
+                            <div>
+                                <p className="text-xs text-gray-400 font-medium">Duration</p>
+                                <p className="text-sm font-bold text-highlight-dark">{totalDays} Days</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        <button
+                            onClick={() => setShowRoadmap(true)}
+                            className="btn-primary flex-1"
+                        >
+                            Generate Plan
+                        </button>
+                        <button
+                            onClick={() => setStep(1)}
+                            className="btn-secondary flex-1"
+                        >
+                            Start Over
+                        </button>
+                    </div>
+                </div>
+            </main>
+        );
+    }
+
+    const isRevisionDay = currentDayData ? currentDayData.day > embedDay : false;
 
     return (
         <main className="p-4 md:p-8 max-w-7xl mx-auto text-slate-800">
-            {/* Header Area */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
                     <button
@@ -64,7 +120,6 @@ export default function Dashboard({ finalPlan, setStep }) {
                     <p className="text-muted">Mastering <span className="font-semibold text-gray-700">{topic}</span> dynamically</p>
                 </div>
 
-                {/* Top Status Badges */}
                 <div className="flex flex-wrap gap-3">
                     <div className="flex items-center gap-3 px-4 py-2 bg-white/80 backdrop-blur-md rounded-xl border border-gray-100 shadow-sm">
                         <Award className="w-5 h-5 text-highlight-orange" />
@@ -83,15 +138,12 @@ export default function Dashboard({ finalPlan, setStep }) {
                 </div>
             </div>
 
-            {/* Main Content Dashboard Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-                {/* Left Sidebar: Timeline Days Navigation (4 Cols) */}
                 <div className="lg:col-span-4 space-y-3 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
                     <p className="text-xs font-bold uppercase tracking-wider text-gray-400 px-1">Your Roadmap Plan</p>
                     {roadmap.map((day, index) => {
                         const isSelected = selectedDayIndex === index;
-                        const isDayRevision = day.day > (totalDays - 2);
+                        const isDayRevision = day.day > embedDay;
 
                         return (
                             <motion.button
@@ -112,7 +164,7 @@ export default function Dashboard({ finalPlan, setStep }) {
                                     </div>
                                     <div className="min-w-0">
                                         <h4 className={`text-sm font-semibold truncate ${isSelected ? 'text-highlight-dark' : 'text-gray-700'}`}>
-                                            {day.focus}
+                                            {(day.topics && day.topics[0]) || `Day ${day.day}`}
                                         </h4>
                                         <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
                                             <Clock className="w-3 h-3" /> {day.estimated_time || 'Allocated hours'}
@@ -130,7 +182,6 @@ export default function Dashboard({ finalPlan, setStep }) {
                     })}
                 </div>
 
-                {/* Right Area: Main Dynamic Workplace Screen (8 Cols) */}
                 <div className="lg:col-span-8">
                     <AnimatePresence mode="wait">
                         {currentDayData && (
@@ -142,23 +193,22 @@ export default function Dashboard({ finalPlan, setStep }) {
                                 transition={{ duration: 0.2 }}
                                 className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"
                             >
-                                {/* Header of Content Card */}
                                 <div className="border-b border-gray-100 pb-4 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                     <div>
                                         <span className={`text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-md ${isRevisionDay ? 'bg-purple-50 text-purple-700' : 'bg-orange-50 text-highlight-orange'
                                             }`}>
                                             Day {currentDayData.day} Focus
                                         </span>
-                                        <h2 className="text-xl font-bold text-highlight-dark mt-2">{currentDayData.focus}</h2>
+                                        <h2 className="text-xl font-bold text-highlight-dark mt-2">
+                                            {(currentDayData.topics && currentDayData.topics.join(' • ')) || `Day ${currentDayData.day}`}
+                                        </h2>
                                     </div>
                                     <div className="text-sm text-gray-400 font-medium flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-lg self-start sm:self-auto">
                                         <Clock className="w-4 h-4 text-gray-400" /> {currentDayData.estimated_time} Expected
                                     </div>
                                 </div>
 
-                                {/* Dynamic Learning Block (Video vs Revision Alert) */}
                                 {isRevisionDay ? (
-                                    /* Revision Buffer View (For Last 2 Days) */
                                     <div className="mb-6 bg-gradient-to-br from-purple-50 via-indigo-50/30 to-white border border-purple-100 rounded-xl p-5 relative overflow-hidden">
                                         <div className="absolute right-4 top-4 text-purple-200/50 pointer-events-none">
                                             <Sparkles className="w-24 h-24 stroke-[1.5]" />
@@ -170,54 +220,57 @@ export default function Dashboard({ finalPlan, setStep }) {
                                             <div>
                                                 <h3 className="font-bold text-purple-900 text-base">🎯 Target Practice & Revision Mode Active</h3>
                                                 <p className="text-purple-700/90 text-sm mt-1 max-w-xl">
-                                                    මචං, අපි මුළු core syllabus එකම කලින් ඉවර කරපු නිසා මේ අන්තිම දවස් 2 වෙන් කරලා තියෙන්නේ ඔයාගේ ඉලක්කය වෙනුවෙන්මයි.
-                                                    පහත සඳහන් Mock Challenges සහ Revision Tasks ටික සම්පූර්ණ කරලා ඔයාගේ target එක 100%ක්ම ෂුවර් කරගන්න!
+                                                    The core syllabus is complete. Use these final days for mock challenges, review, and implementation practice.
                                                 </p>
                                             </div>
                                         </div>
                                     </div>
-                                ) : (
-                                    /* Regular Core Syllabus Learning View (YouTube Player) */
-                                    currentDayData.video_url && (
-                                        <div className="mb-6">
-                                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1">
-                                                <PlayCircle className="w-3.5 h-3.5 text-red-500" /> Core Video Resource
-                                            </p>
-                                            {getEmbedUrl(currentDayData.video_url) ? (
-                                                <div className="aspect-video w-full rounded-xl overflow-hidden border border-gray-200 bg-black shadow-inner">
-                                                    <iframe
-                                                        className="w-full h-full"
-                                                        src={getEmbedUrl(currentDayData.video_url)}
-                                                        title={currentDayData.focus}
-                                                        frameBorder="0"
-                                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                                        allowFullScreen
-                                                    ></iframe>
-                                                </div>
-                                            ) : (
-                                                <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl flex items-center justify-between">
-                                                    <span className="text-sm font-medium text-gray-600 truncate mr-2">{currentDayData.video_url}</span>
-                                                    <a
-                                                        href={currentDayData.video_url}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="btn-primary text-xs whitespace-nowrap"
-                                                    >
-                                                        Open Video External →
-                                                    </a>
-                                                </div>
-                                            )}
+                                ) : currentDayData.resources?.length > 0 ? (
+                                    <div className="mb-6 space-y-4">
+                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                                            <PlayCircle className="w-3.5 h-3.5 text-red-500" /> Core Video Resources
+                                        </p>
+                                        <div className="grid gap-4">
+                                            {currentDayData.resources.map((resource, resourceIndex) => {
+                                                const embedUrl = getEmbedUrl(resource);
+                                                return (
+                                                    <div key={resourceIndex} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                                                        <h3 className="font-semibold text-highlight-dark mb-2">{resource.title}</h3>
+                                                        <p className="text-sm text-muted mb-4">{resource.summary}</p>
+                                                        {embedUrl ? (
+                                                            <div className="aspect-video w-full rounded-xl overflow-hidden border border-gray-200 bg-black shadow-inner">
+                                                                <iframe
+                                                                    className="w-full h-full"
+                                                                    src={embedUrl}
+                                                                    title={resource.title}
+                                                                    frameBorder="0"
+                                                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                                    allowFullScreen
+                                                                ></iframe>
+                                                            </div>
+                                                        ) : (
+                                                            <a
+                                                                href={resource.embed_url || resource.url}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="btn-primary text-xs inline-flex whitespace-nowrap"
+                                                            >
+                                                                Open Resource →
+                                                            </a>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
-                                    )
-                                )}
+                                    </div>
+                                ) : null}
 
-                                {/* Actionable Tasks Checkbox List */}
                                 <div>
                                     <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-1">
                                         <CheckSquare className="w-3.5 h-3.5 text-highlight-blue" /> Actionable Objectives For Today
                                     </p>
                                     <div className="space-y-2.5">
-                                        {currentDayData.tasks?.map((task, tIdx) => {
+                                        {(currentDayData.tasks || []).map((task, tIdx) => {
                                             const isChecked = !!completedTasks[`${currentDayData.day}-${tIdx}`];
                                             return (
                                                 <div
@@ -243,33 +296,11 @@ export default function Dashboard({ finalPlan, setStep }) {
                                         })}
                                     </div>
                                 </div>
-
                             </motion.div>
                         )}
                     </AnimatePresence>
                 </div>
-
             </div>
-
-            {resources.length > 0 && (
-                <section className="mt-8 card-light">
-                    <h3 className="text-xl font-bold text-highlight-dark mb-4">Curated Resources</h3>
-                    <div className="grid gap-4 md:grid-cols-2">
-                        {resources.map((resource, index) => (
-                            <a
-                                key={index}
-                                href={resource.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="block p-4 rounded-xl border border-gray-200 hover:border-orange-300 bg-white transition-all"
-                            >
-                                <h4 className="font-semibold text-highlight-dark mb-1">{resource.title}</h4>
-                                <p className="text-sm text-muted">{resource.reason_for_picking}</p>
-                            </a>
-                        ))}
-                    </div>
-                </section>
-            )}
         </main>
     );
 }

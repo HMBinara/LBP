@@ -21,7 +21,7 @@ def _friendly_error_message(error):
     text = str(error)
     lower = text.lower()
     if "quota" in lower or "rate" in lower or "429" in lower:
-        return "AI service quota reached right now. A fallback flow was used when possible. Please retry in a few minutes."
+        return "AI service quota reached right now. Please retry in a few minutes."
     return "Something went wrong while processing your request. Please try again."
 
 @app.route('/health', methods=['GET'])
@@ -35,6 +35,14 @@ def start_journey():
         user_input = request.json
         topic = user_input.get('topic')
         sub_topics = user_input.get('sub_topics', [])
+        duration_days = user_input.get('duration_days')
+        daily_hours = user_input.get('daily_hours')
+
+        if not topic or duration_days is None or daily_hours is None:
+            return jsonify({
+                "status": "error",
+                "message": "topic, duration_days, and daily_hours are required."
+            }), 400
         
         # 1. Assessor Agent හරහා ප්‍රශ්න 10ක (Mixed Difficulty) Quiz එකක් සැකසීම
         quiz = generate_assessment_quiz(topic, sub_topics)
@@ -67,6 +75,8 @@ def submit_quiz():
 
         if session_id not in session_storage:
             return jsonify({"status": "error", "message": "Invalid Session ID"}), 404
+        if not isinstance(user_answers, list):
+            return jsonify({"status": "error", "message": "answers must be an array."}), 400
 
         current_session = session_storage[session_id]
 
@@ -92,10 +102,9 @@ def submit_quiz():
 
         return jsonify({
             "status": "success",
-            "score": assessment_result["score"],
+            "score": int(assessment_result["score"]),
             "skill_level": assessment_result["level"],
-            "roadmap": final_plan.get("days", []),
-            "resources": curated_resources
+            "roadmap": final_plan.get("days", [])
         })
 
     except Exception as e:

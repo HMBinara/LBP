@@ -32,7 +32,7 @@ function App() {
 
       {/* Step 3: Final Personalized Dashboard */}
       {step === 3 && (
-        <Dashboard studyPlan={finalPlan} />
+        <Dashboard finalPlan={finalPlan} setStep={setStep} />
       )}
     </div>
   );
