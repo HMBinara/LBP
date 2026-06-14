@@ -142,7 +142,10 @@ def submit_quiz():
             "status": "success",
             "score": int(assessment_result["score"]),
             "skill_level": assessment_result["level"],
-            "roadmap": final_plan.get("days", [])
+            "level": assessment_result["level"],            # Fallback 1
+            "roadmap": final_plan.get("days", []),          # Standard
+            "plan": final_plan,                             # Fallback 2 (Full Object)
+            "days": final_plan.get("days", [])              # Fallback 3
         })
 
     except Exception as e:
