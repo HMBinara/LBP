@@ -23,3 +23,5 @@ instance/
 # OS related files
 .DS_Store
 Thumbs.db
+
+backend/serviceAccountKey.json
