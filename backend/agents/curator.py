@@ -55,34 +55,35 @@ def get_curated_resources(topic, skill_level, user_data):
     if not raw_resources:
         raise RuntimeError("Unable to fetch YouTube resources for the requested topic.")
 
-        prompt = f"""
-        User wants to master the topic: '{topic}'.
-        Diagnosed skill level: {skill_level}.
-        Specific Sub-topics specified: {sub_topics}
-        Primary Educational/Career Goal: {goal}
-        Duration allocated: {user_data.get('duration_days')} days
+    # [FIX] Prompt එක if බ්ලොක් එකෙන් එළියට ගෙන Indentation නිවැරදි කර ඇත.
+    prompt = f"""
+    User wants to master the topic: '{topic}'.
+    Diagnosed skill level: {skill_level}.
+    Specific Sub-topics specified: {sub_topics}
+    Primary Educational/Career Goal: {goal}
+    Duration allocated: {user_data.get('duration_days')} days
 
-        Here is a pool of raw YouTube search results (title + video_id + url + description):
-        {raw_resources}
+    Here is a pool of raw YouTube search results (title + video_id + url + description):
+    {raw_resources}
 
-        Task:
-        - From the pool above, select the top 7 to 8 videos that together form a chronological and pedagogically-sound sequence covering the topic and sub-topics.
-        - For each selected video, return exactly these fields: `type`, `title`, `embed_url`, `summary`.
-            * `type`: must be the literal string "youtube".
-            * `title`: cleaned human-friendly title.
-            * `embed_url`: the YouTube embed URL in the form https://www.youtube.com/embed/VIDEO_ID.
-            * `summary`: 1-2 sentence explanation of what the video teaches and why it was selected.
+    Task:
+    - From the pool above, select the top 7 to 8 videos that together form a chronological and pedagogically-sound sequence covering the topic and sub-topics.
+    - For each selected video, return exactly these fields: `type`, `title`, `embed_url`, `summary`.
+        * `type`: must be the literal string "youtube".
+        * `title`: cleaned human-friendly title.
+        * `embed_url`: the YouTube embed URL in the form https://www.youtube.com/embed/VIDEO_ID.
+        * `summary`: 1-2 sentence explanation of what the video teaches and why it was selected.
 
-        IMPORTANT: Return STRICTLY a JSON array (no markdown fences, no prose). Use this exact example structure:
-        [
-            {
-                "type": "youtube",
-                "title": "...",
-                "embed_url": "https://www.youtube.com/embed/VIDEO_ID",
-                "summary": "Short summary"
-            }
-        ]
-        """
+    IMPORTANT: Return STRICTLY a JSON array (no markdown fences, no prose). Use this exact example structure:
+    [
+        {{
+            "type": "youtube",
+            "title": "...",
+            "embed_url": "https://www.youtube.com/embed/VIDEO_ID",
+            "summary": "Short summary"
+        }}
+    ]
+    """
 
     try:
         response = generate_with_model_fallbacks(prompt)
