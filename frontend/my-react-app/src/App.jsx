@@ -1,75 +1,106 @@
 import { useState, useEffect } from 'react';
-import { auth } from './config/firebase'; // firebase.js තියෙන නිවැරදි path එක
+import { auth } from './config/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Loader2 } from 'lucide-react';
 import Auth from './components/Auth';
 import Hero from './components/Hero';
 import Quiz from './components/Quiz';
 import Dashboard from './components/Dashboard';
 
 function App() {
-  // Authentication States
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  // 1: Topic Input (Hero), 2: Quiz, 3: Final Dashboard
-  const [step, setStep] = useState(1);
-
-  // Store temporary session data from backend and the final study plan
+  const [step, setStep] = useState(1); // 1: Hero, 2: Quiz, 3: Dashboard
   const [sessionData, setSessionData] = useState(null);
   const [finalPlan, setFinalPlan] = useState(null);
 
-  // Listen for Firebase Auth State changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setLoading(false);
     });
-    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, []);
 
-  // Show a loading spinner while Firebase checks the login session
+  // Premium Loading Screen
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-orange-500"></div>
+      <div className="min-h-screen gradient-primary flex flex-col items-center justify-center gap-4 relative overflow-hidden">
+        <div className="floating-orb floating-orb-orange w-96 h-96 top-10 left-10" />
+        <div className="floating-orb floating-orb-blue w-80 h-80 bottom-20 right-20" />
+
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ repeat: Infinity, duration: 1.5, ease: "linear" }}
+        >
+          <Loader2 className="w-10 h-10 text-highlight-orange" />
+        </motion.div>
+        <motion.p
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-sm font-semibold text-highlight-dark tracking-wide"
+        >
+          Initializing LearnPath AI...
+        </motion.p>
       </div>
     );
   }
 
-  // Rule 1: If the user is NOT logged in, show the Glassmorphic Auth Screen
+  // Not logged in → Auth Screen
   if (!user) {
     return <Auth onAuthSuccess={(loggedInUser) => setUser(loggedInUser)} />;
   }
 
-  // Rule 2: If the user IS logged in, show the core application flow
+  // Logged in → Core Application Flow
   return (
-    <div className="min-h-screen bg-white text-gray-900 font-sans selection:bg-orange-200 theme-light gradient-primary">
+    <div className="min-h-screen font-sans theme-light gradient-primary selection:bg-orange-200 perspective-3d">
+      <AnimatePresence mode="wait">
+        {step === 1 && (
+          <motion.div
+            key="hero"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
+          >
+            <Hero
+              userId={user.uid}
+              setStep={setStep}
+              setSessionData={setSessionData}
+            />
+          </motion.div>
+        )}
 
-      {/* Step 1: Collect details from the user */}
-      {step === 1 && (
-        <Hero
-          userId={user.uid} // 🎯 ශිෂ්‍යයාගේ UID එක Hero එකට පාස් කරනවා (History එකක් ගන්න ඕන වුණොත් පාවිච්චි කරන්න)
-          setStep={setStep}
-          setSessionData={setSessionData}
-        />
-      )}
+        {step === 2 && (
+          <motion.div
+            key="quiz"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
+          >
+            <Quiz
+              userId={user.uid}
+              sessionData={sessionData}
+              setStep={setStep}
+              setFinalPlan={setFinalPlan}
+            />
+          </motion.div>
+        )}
 
-      {/* Step 2: Show the AI-generated quiz */}
-      {step === 2 && (
-        <Quiz
-          userId={user.uid} // 🎯 ශිෂ්‍යයාගේ UID එක Quiz එකට පාස් කරනවා (Firestore එකේ වෙන වෙනම සේව් කරන්න)
-          sessionData={sessionData}
-          setStep={setStep}
-          setFinalPlan={setFinalPlan}
-        />
-      )}
-
-      {/* Step 3: Final Personalized Dashboard */}
-      {step === 3 && (
-        <Dashboard finalPlan={finalPlan} setStep={setStep} />
-      )}
-
+        {step === 3 && (
+          <motion.div
+            key="dashboard"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
+          >
+            <Dashboard finalPlan={finalPlan} setStep={setStep} />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
