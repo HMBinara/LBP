@@ -1,6 +1,10 @@
 import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, CheckSquare, PlayCircle, Award, Clock, ArrowLeft, BookOpen, Sparkles, FileText, ArrowRight, ExternalLink } from 'lucide-react';
+import {
+    Calendar, CheckSquare, PlayCircle, Award, Clock, ArrowLeft, BookOpen,
+    Sparkles, FileText, ArrowRight, ExternalLink, CheckCircle, Target,
+    GraduationCap, BarChart3, Zap
+} from 'lucide-react';
 
 export default function Dashboard({ finalPlan, setStep }) {
     const skillLevel = finalPlan?.skill_level || 'Beginner';
@@ -12,9 +16,7 @@ export default function Dashboard({ finalPlan, setStep }) {
     const [selectedDayIndex, setSelectedDayIndex] = useState(0);
     const [completedTasks, setCompletedTasks] = useState({});
     const [showRoadmap, setShowRoadmap] = useState(false);
-    const [activeTab, setActiveTab] = useState('roadmap'); // 'roadmap' | 'notes'
-
-    // නවතම State එක: දැනට Full Page එකක් විදිහට බලන Day එක track කරන්න (null නම් Dashboard එක පෙනෙයි)
+    const [activeTab, setActiveTab] = useState('roadmap');
     const [fullViewDayData, setFullViewDayData] = useState(null);
 
     const currentDayData = roadmap?.[selectedDayIndex] || null;
@@ -22,10 +24,7 @@ export default function Dashboard({ finalPlan, setStep }) {
 
     const toggleTask = (dayNumber, taskIndex) => {
         const key = `${dayNumber}-${taskIndex}`;
-        setCompletedTasks(prev => ({
-            ...prev,
-            [key]: !prev[key]
-        }));
+        setCompletedTasks(prev => ({ ...prev, [key]: !prev[key] }));
     };
 
     const getEmbedUrl = (resource) => {
@@ -37,78 +36,139 @@ export default function Dashboard({ finalPlan, setStep }) {
         return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}` : null;
     };
 
+    // ═══ NO PLAN FALLBACK ═══
     if (!finalPlan) {
         return (
-            <main className="p-6 md:p-12 max-w-4xl mx-auto text-center card-light mt-10">
-                <h3 className="text-xl font-bold text-gray-800 mb-2">No Active Study Roadmap</h3>
-                <p className="text-gray-600 mb-6">Please complete the assessment quiz first to generate your custom dashboard.</p>
-                <button onClick={() => setStep(1)} className="btn-primary">Generate Plan</button>
+            <main className="min-h-screen gradient-primary flex items-center justify-center p-6">
+                <div className="perspective-3d">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="card-3d glass-light rounded-3xl p-10 max-w-md text-center"
+                    >
+                        <div className="w-14 h-14 rounded-2xl bg-orange-50 flex items-center justify-center mx-auto mb-5 border border-orange-100">
+                            <GraduationCap className="w-7 h-7 text-highlight-orange" />
+                        </div>
+                        <h3 className="text-xl font-extrabold text-highlight-dark mb-2">No Active Study Plan</h3>
+                        <p className="text-muted text-sm mb-7">Complete the assessment quiz first to generate your custom dashboard.</p>
+                        <button onClick={() => setStep(1)} className="btn-primary w-full">
+                            <Zap size={16} /> Generate Plan
+                        </button>
+                    </motion.div>
+                </div>
             </main>
         );
     }
 
+    // ═══ ASSESSMENT SUMMARY (Before Roadmap) ═══
     if (!showRoadmap) {
+        const summaryCards = [
+            {
+                icon: Award,
+                label: 'Skill Level',
+                value: skillLevel,
+                color: 'from-orange-500 to-orange-600',
+                shadowColor: 'rgba(255, 140, 0, 0.2)',
+                bg: 'bg-orange-50',
+                borderColor: 'border-orange-100'
+            },
+            {
+                icon: BarChart3,
+                label: 'Quiz Score',
+                value: `${score}/10`,
+                color: 'from-blue-500 to-blue-600',
+                shadowColor: 'rgba(59, 130, 246, 0.2)',
+                bg: 'bg-blue-50',
+                borderColor: 'border-blue-100'
+            },
+            {
+                icon: Calendar,
+                label: 'Duration',
+                value: `${totalDays} Days`,
+                color: 'from-emerald-500 to-emerald-600',
+                shadowColor: 'rgba(16, 185, 129, 0.2)',
+                bg: 'bg-emerald-50',
+                borderColor: 'border-emerald-100'
+            },
+        ];
+
         return (
-            <main className="p-6 md:p-12 max-w-4xl mx-auto">
-                <div className="card-light rounded-3xl p-8 md:p-10 shadow-sm border border-gray-100">
-                    <div className="flex items-center gap-2 mb-6">
-                        <Sparkles className="text-highlight-orange" size={20} />
-                        <span className="text-highlight-orange font-bold tracking-widest text-sm uppercase">Assessment Complete</span>
-                    </div>
+            <main className="min-h-screen gradient-primary flex items-center justify-center p-6 relative overflow-hidden">
+                <div className="floating-orb floating-orb-orange w-[500px] h-[500px] top-[5%] right-[10%]" />
+                <div className="floating-orb floating-orb-blue w-[400px] h-[400px] bottom-[10%] left-[5%]" />
 
-                    <h1 className="text-3xl md:text-4xl font-extrabold text-highlight-dark mb-3">
-                        Your Skill Level is Ready
-                    </h1>
-                    <p className="text-muted text-lg mb-8">
-                        We analyzed your 10 quiz answers and calculated your learning level. Click below to generate your personalized roadmap.
-                    </p>
+                <motion.div
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                    className="w-full max-w-2xl relative z-10"
+                >
+                    <div className="glass-light rounded-3xl p-8 md:p-10 text-center relative overflow-hidden">
+                        {/* Top accent */}
+                        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[var(--brand-orange)] to-transparent opacity-50" />
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-                        <div className="px-4 py-4 bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center gap-3">
-                            <Award className="w-5 h-5 text-highlight-orange" />
-                            <div>
-                                <p className="text-xs text-gray-400 font-medium">Skill Level</p>
-                                <p className="text-sm font-bold text-highlight-dark">{skillLevel}</p>
+                        <div className="flex items-center gap-2 justify-center mb-5">
+                            <Sparkles className="text-highlight-orange" size={20} />
+                            <span className="text-highlight-orange font-bold tracking-widest text-xs uppercase">Assessment Complete</span>
+                        </div>
+
+                        <h1 className="text-3xl md:text-4xl font-extrabold text-highlight-dark mb-3 tracking-tight">
+                            Your Skill Level is <span className="gradient-text-orange">Ready</span>
+                        </h1>
+                        <p className="text-muted text-sm mb-8 max-w-md mx-auto">
+                            We analyzed your 10 quiz answers and calculated your learning level. Click below to generate your personalized roadmap.
+                        </p>
+
+                        {/* 3D Metric Cards */}
+                        <div className="perspective-3d">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                                {summaryCards.map((card, i) => (
+                                    <motion.div
+                                        key={i}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: 0.2 + i * 0.1 }}
+                                        whileHover={{ rotateX: 5, rotateY: -5, translateY: -5 }}
+                                        className={`p-4 rounded-2xl border ${card.borderColor} ${card.bg} transition-all duration-300 flex items-center gap-3`}
+                                        style={{ transformStyle: 'preserve-3d', boxShadow: `0 8px 25px ${card.shadowColor}` }}
+                                    >
+                                        <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${card.color} flex items-center justify-center shadow-md flex-shrink-0`}>
+                                            <card.icon className="w-5 h-5 text-white" />
+                                        </div>
+                                        <div className="text-left">
+                                            <p className="text-[10px] text-muted font-semibold uppercase tracking-wider">{card.label}</p>
+                                            <p className="text-sm font-extrabold text-highlight-dark">{card.value}</p>
+                                        </div>
+                                    </motion.div>
+                                ))}
                             </div>
                         </div>
-                        <div className="px-4 py-4 bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center gap-3">
-                            <CheckSquare className="w-5 h-5 text-highlight-blue" />
-                            <div>
-                                <p className="text-xs text-gray-400 font-medium">Score</p>
-                                <p className="text-sm font-bold text-highlight-dark">{score}/10</p>
-                            </div>
-                        </div>
-                        <div className="px-4 py-4 bg-white rounded-2xl border border-gray-100 shadow-sm flex items-center gap-3">
-                            <Calendar className="w-5 h-5 text-emerald-500" />
-                            <div>
-                                <p className="text-xs text-gray-400 font-medium">Duration</p>
-                                <p className="text-sm font-bold text-highlight-dark">{totalDays} Days</p>
-                            </div>
-                        </div>
-                    </div>
 
-                    <div className="flex flex-col sm:flex-row gap-3">
-                        <button
-                            onClick={() => setShowRoadmap(true)}
-                            className="btn-primary flex-1"
-                        >
-                            Generate Plan
-                        </button>
-                        <button
-                            onClick={() => setStep(1)}
-                            className="btn-secondary flex-1"
-                        >
-                            Start Over
-                        </button>
+                        <div className="flex flex-col sm:flex-row gap-3">
+                            <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => setShowRoadmap(true)}
+                                className="btn-primary flex-1"
+                            >
+                                <Rocket size={16} /> View My Roadmap
+                            </motion.button>
+                            <button
+                                onClick={() => setStep(1)}
+                                className="btn-secondary flex-1"
+                            >
+                                <ArrowLeft size={16} /> Start Over
+                            </button>
+                        </div>
                     </div>
-                </div>
+                </motion.div>
             </main>
         );
     }
 
     const isRevisionDay = currentDayData ? currentDayData.day > embedDay : false;
 
-    // --- මචං, මෙතනින් තමයි අලුත් SEPARATE PAGE / FULL VIEW එක Render වෙන්නේ ---
+    // ═══ FULL-VIEW / DEEP-DIVE PAGE ═══
     if (fullViewDayData) {
         const isFullRevisionDay = fullViewDayData.day > embedDay;
         return (
@@ -116,111 +176,127 @@ export default function Dashboard({ finalPlan, setStep }) {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="p-4 md:p-8 max-w-5xl mx-auto text-slate-800"
+                className="min-h-screen gradient-primary p-4 md:p-8"
             >
-                {/* Back to Dashboard Button */}
-                <button
-                    onClick={() => setFullViewDayData(null)}
-                    className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-highlight-orange transition-colors mb-6 bg-gray-50 px-4 py-2 rounded-xl border border-gray-100 w-fit"
-                >
-                    <ArrowLeft className="w-4 h-4" /> Back to Dashboard
-                </button>
+                <div className="max-w-5xl mx-auto">
+                    {/* Breadcrumb Back */}
+                    <button
+                        onClick={() => setFullViewDayData(null)}
+                        className="btn-secondary text-xs px-4 py-2.5 mb-6"
+                    >
+                        <ArrowLeft className="w-4 h-4" /> Back to Dashboard
+                    </button>
 
-                {/* Page Title Header */}
-                <div className="bg-white border border-gray-100 p-6 md:p-8 rounded-2xl shadow-sm mb-8">
-                    <span className={`text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-md ${isFullRevisionDay ? 'bg-purple-50 text-purple-700' : 'bg-orange-50 text-highlight-orange'}`}>
-                        Day {fullViewDayData.day} Full Study Module
-                    </span>
-                    <h1 className="text-2xl md:text-4xl font-extrabold text-highlight-dark mt-3">
-                        {(fullViewDayData.topics && fullViewDayData.topics.join(' • ')) || `Day ${fullViewDayData.day}`}
-                    </h1>
-                    <p className="text-muted mt-2 flex items-center gap-2 text-sm">
-                        <Clock className="w-4 h-4 text-gray-400" /> Estimated Study Time: <span className="font-semibold text-gray-700">{fullViewDayData.estimated_time || 'N/A'}</span>
-                    </p>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    {/* Left Column: Tasks Checklist */}
-                    <div className="md:col-span-1 space-y-4">
-                        <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
-                            <CheckSquare className="w-4 h-4 text-highlight-blue" /> Tasks Checklist
-                        </h3>
-                        <div className="space-y-2.5">
-                            {(fullViewDayData.tasks || []).map((task, tIdx) => {
-                                const isChecked = !!completedTasks[`${fullViewDayData.day}-${tIdx}`];
-                                return (
-                                    <div
-                                        key={tIdx}
-                                        onClick={() => toggleTask(fullViewDayData.day, tIdx)}
-                                        className={`p-3.5 rounded-xl border transition-all flex items-start gap-3 cursor-pointer bg-white ${isChecked ? 'opacity-60 border-gray-200' : 'border-gray-100 hover:border-orange-200'}`}
-                                    >
-                                        <div className={`mt-0.5 w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 transition-colors ${isChecked ? 'bg-highlight-blue border-highlight-blue text-white' : 'border-gray-300'}`}>
-                                            {isChecked && <span className="text-xs font-bold">✓</span>}
-                                        </div>
-                                        <span className={`text-sm leading-relaxed ${isChecked ? 'line-through text-gray-400' : 'text-gray-700 font-medium'}`}>
-                                            {task}
-                                        </span>
-                                    </div>
-                                );
-                            })}
-                        </div>
+                    {/* Page Header */}
+                    <div className="glass-light rounded-2xl p-6 md:p-8 mb-8 relative overflow-hidden">
+                        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[var(--brand-orange)] to-transparent opacity-40" />
+                        <span className={`text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg inline-block mb-3 ${isFullRevisionDay ? 'badge-purple' : 'badge-orange'}`}>
+                            Day {fullViewDayData.day} Full Study Module
+                        </span>
+                        <h1 className="text-2xl md:text-3xl font-extrabold text-highlight-dark tracking-tight">
+                            {(fullViewDayData.topics && fullViewDayData.topics.join(' • ')) || `Day ${fullViewDayData.day}`}
+                        </h1>
+                        <p className="text-muted mt-2 flex items-center gap-2 text-sm">
+                            <Clock className="w-4 h-4 text-gray-400" />
+                            Estimated Study Time: <span className="font-bold text-highlight-dark">{fullViewDayData.estimated_time || 'N/A'}</span>
+                        </p>
                     </div>
 
-                    {/* Right Column: Video Resources and Extended Notes */}
-                    <div className="md:col-span-2 space-y-6">
-                        <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
-                            <BookOpen className="w-4 h-4 text-highlight-orange" /> Study Materials & Briefing
-                        </h3>
-
-                        {fullViewDayData.resources?.length > 0 ? (
-                            fullViewDayData.resources.map((resource, rIdx) => {
-                                const embedUrl = getEmbedUrl(resource);
-                                return (
-                                    <div key={rIdx} className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm space-y-4">
-                                        <div>
-                                            <h4 className="font-bold text-highlight-dark text-base">{resource.title}</h4>
-                                            <p className="text-sm text-muted mt-1 leading-relaxed">{resource.summary || 'No extensive summaries provided.'}</p>
-                                        </div>
-
-                                        {embedUrl ? (
-                                            <div className="aspect-video w-full rounded-xl overflow-hidden border border-gray-200 bg-black shadow-inner">
-                                                <iframe
-                                                    className="w-full h-full"
-                                                    src={embedUrl}
-                                                    title={resource.title}
-                                                    frameBorder="0"
-                                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                                    allowFullScreen
-                                                ></iframe>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {/* Left: Tasks Checklist */}
+                        <div className="md:col-span-1 space-y-3">
+                            <h3 className="text-xs font-bold text-muted uppercase tracking-wider flex items-center gap-1.5 mb-1">
+                                <CheckSquare className="w-4 h-4 text-blue-500" /> Tasks Checklist
+                            </h3>
+                            <div className="space-y-2">
+                                {(fullViewDayData.tasks || []).map((task, tIdx) => {
+                                    const isChecked = !!completedTasks[`${fullViewDayData.day}-${tIdx}`];
+                                    return (
+                                        <motion.div
+                                            key={tIdx}
+                                            whileHover={{ x: 3 }}
+                                            onClick={() => toggleTask(fullViewDayData.day, tIdx)}
+                                            className={`p-3.5 rounded-xl border transition-all duration-200 flex items-start gap-3 cursor-pointer ${isChecked
+                                                ? 'opacity-50 border-gray-200 bg-gray-50'
+                                                : 'border-gray-100 bg-white hover:border-orange-200 hover:shadow-sm'
+                                            }`}
+                                        >
+                                            <div className={`mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all duration-200 ${isChecked
+                                                ? 'bg-blue-500 border-blue-500 text-white'
+                                                : 'border-gray-300'
+                                            }`}>
+                                                {isChecked && <CheckCircle size={12} />}
                                             </div>
-                                        ) : (
-                                            <a
-                                                href={resource.embed_url || resource.url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="btn-primary text-xs inline-flex items-center gap-1"
-                                            >
-                                                Open External Resource <ExternalLink size={12} />
-                                            </a>
-                                        )}
-                                    </div>
-                                );
-                            })
-                        ) : (
-                            <div className="bg-gray-50 border border-gray-100 p-6 rounded-xl text-center italic text-gray-500 text-sm">
-                                No specific resource materials available for this block. Use today for mock implementation challenges!
+                                            <span className={`text-sm leading-relaxed ${isChecked ? 'line-through text-gray-400' : 'text-gray-700 font-medium'}`}>
+                                                {task}
+                                            </span>
+                                        </motion.div>
+                                    );
+                                })}
                             </div>
-                        )}
+                        </div>
 
-                        {/* Core Architecture Section */}
-                        <div className="bg-slate-50 border border-gray-100 rounded-xl p-5">
-                            <h4 className="text-sm font-bold text-gray-700 mb-3">Key Structural Concepts to Retain</h4>
-                            <ul className="list-disc pl-5 space-y-2 text-sm text-gray-600">
-                                {(fullViewDayData.topics || []).map((tp, i) => (
-                                    <li key={i}>Deep-dive technical patterns of <span className="font-semibold text-gray-800">{tp}</span></li>
-                                ))}
-                                <li>Ensure clean formatting, syntax adherence, and decoupled modular integration.</li>
-                            </ul>
+                        {/* Right: Resources & Briefing */}
+                        <div className="md:col-span-2 space-y-5">
+                            <h3 className="text-xs font-bold text-muted uppercase tracking-wider flex items-center gap-1.5 mb-1">
+                                <BookOpen className="w-4 h-4 text-highlight-orange" /> Study Materials & Briefing
+                            </h3>
+
+                            {fullViewDayData.resources?.length > 0 ? (
+                                fullViewDayData.resources.map((resource, rIdx) => {
+                                    const embedUrl = getEmbedUrl(resource);
+                                    return (
+                                        <div key={rIdx} className="glass-light rounded-2xl p-5 space-y-4">
+                                            <div>
+                                                <h4 className="font-bold text-highlight-dark text-base">{resource.title}</h4>
+                                                <p className="text-sm text-muted mt-1 leading-relaxed">{resource.summary || 'No extensive summaries provided.'}</p>
+                                            </div>
+                                            {embedUrl ? (
+                                                <div className="aspect-video w-full rounded-xl overflow-hidden border border-gray-200 bg-black shadow-lg">
+                                                    <iframe
+                                                        className="w-full h-full"
+                                                        src={embedUrl}
+                                                        title={resource.title}
+                                                        frameBorder="0"
+                                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                        allowFullScreen
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <a
+                                                    href={resource.embed_url || resource.url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="btn-primary text-xs inline-flex"
+                                                >
+                                                    Open Resource <ExternalLink size={12} />
+                                                </a>
+                                            )}
+                                        </div>
+                                    );
+                                })
+                            ) : (
+                                <div className="glass-light rounded-2xl p-6 text-center italic text-muted text-sm">
+                                    No specific resources for this block. Focus on implementation challenges!
+                                </div>
+                            )}
+
+                            {/* Core Concepts */}
+                            <div className="bg-gray-50 border border-gray-100 rounded-xl p-5">
+                                <h4 className="text-xs font-bold text-highlight-dark mb-3 uppercase tracking-wider">Key Concepts to Retain</h4>
+                                <ul className="space-y-2">
+                                    {(fullViewDayData.topics || []).map((tp, i) => (
+                                        <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
+                                            <CheckCircle size={14} className="text-emerald-500 mt-0.5 flex-shrink-0" />
+                                            Deep-dive technical patterns of <span className="font-semibold text-highlight-dark">{tp}</span>
+                                        </li>
+                                    ))}
+                                    <li className="flex items-start gap-2 text-sm text-gray-600">
+                                        <CheckCircle size={14} className="text-emerald-500 mt-0.5 flex-shrink-0" />
+                                        Clean formatting, syntax adherence, and modular integration.
+                                    </li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -228,277 +304,355 @@ export default function Dashboard({ finalPlan, setStep }) {
         );
     }
 
-    // --- සාමාන්‍ය DASHBOARD VIEW එක (මුකුත් Click කරලා නැති වෙලාවට) ---
+    // ═══ MAIN DASHBOARD VIEW — TIMELINE ROADMAP ═══
     return (
-        <main className="p-4 md:p-8 max-w-7xl mx-auto text-slate-800">
-            {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-                <div>
-                    <button
-                        onClick={() => setStep(1)}
-                        className="flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-highlight-orange transition-colors mb-2"
-                    >
-                        <ArrowLeft className="w-4 h-4" /> Reset & Start New
-                    </button>
-                    <h1 className="text-3xl font-extrabold text-highlight-dark bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
-                        {`${topic} Learning Roadmap`}
-                    </h1>
-                    <p className="text-muted">Mastering <span className="font-semibold text-gray-700">{topic}</span> dynamically</p>
-                </div>
-
-                <div className="flex flex-wrap gap-3">
-                    <div className="flex items-center gap-3 px-4 py-2 bg-white/80 backdrop-blur-md rounded-xl border border-gray-100 shadow-sm">
-                        <Award className="w-5 h-5 text-highlight-orange" />
-                        <div>
-                            <p className="text-xs text-gray-400 font-medium">Diagnosed Level</p>
-                            <p className="text-sm font-bold text-highlight-dark">{skillLevel} ({score}/10)</p>
-                        </div>
+        <main className="min-h-screen gradient-primary p-4 md:p-8">
+            <div className="max-w-7xl mx-auto">
+                {/* Header */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                    <div>
+                        <button
+                            onClick={() => setStep(1)}
+                            className="flex items-center gap-2 text-xs font-semibold text-muted hover:text-highlight-orange transition-all duration-200 mb-2 group"
+                        >
+                            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> Reset & Start New
+                        </button>
+                        <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight mb-1">
+                            <span className="gradient-text">{topic}</span>
+                            <span className="text-highlight-dark"> Learning Roadmap</span>
+                        </h1>
+                        <p className="text-muted text-sm flex items-center gap-1.5">
+                            <Sparkles size={14} className="text-highlight-orange" />
+                            Mastering <span className="font-semibold text-highlight-dark">{topic}</span> with AI guidance
+                        </p>
                     </div>
-                    <div className="flex items-center gap-3 px-4 py-2 bg-white/80 backdrop-blur-md rounded-xl border border-gray-100 shadow-sm">
-                        <Calendar className="w-5 h-5 text-highlight-blue" />
-                        <div>
-                            <p className="text-xs text-gray-400 font-medium">Timeline</p>
-                            <p className="text-sm font-bold text-highlight-dark">{totalDays} Days Track</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
-            {/* Navigation Tabs */}
-            <div className="flex border-b border-gray-200 mb-6 gap-2">
-                <button
-                    onClick={() => setActiveTab('roadmap')}
-                    className={`flex items-center gap-2 px-4 py-2.5 font-semibold text-sm transition-all border-b-2 ${activeTab === 'roadmap' ? 'border-highlight-orange text-highlight-orange' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                >
-                    <Calendar className="w-4 h-4" /> Roadmap Plan
-                </button>
-                <button
-                    onClick={() => setActiveTab('notes')}
-                    className={`flex items-center gap-2 px-4 py-2.5 font-semibold text-sm transition-all border-b-2 ${activeTab === 'notes' ? 'border-highlight-orange text-highlight-orange' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                >
-                    <FileText className="w-4 h-4" /> Study Notes
-                </button>
-            </div>
-
-            {/* Main Content Layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-                {/* Left Side: Days List */}
-                <div className="lg:col-span-4 space-y-3 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
-                    <p className="text-xs font-bold uppercase tracking-wider text-gray-400 px-1">Your Course Schedule</p>
-                    {roadmap.map((day, index) => {
-                        const isSelected = selectedDayIndex === index;
-                        const isDayRevision = day.day > embedDay;
-
-                        return (
-                            <motion.button
-                                key={index}
-                                whileHover={{ x: 4 }}
-                                onClick={() => setSelectedDayIndex(index)}
-                                className={`w-full p-4 rounded-xl text-left border transition-all flex items-center justify-between ${isSelected ? 'bg-gradient-to-r from-orange-50 to-orange-100/50 border-highlight-orange/50 shadow-sm' : 'bg-white border-gray-100 hover:border-orange-200'}`}
-                            >
-                                <div className="flex items-center gap-3 min-w-0">
-                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm flex-shrink-0 ${isSelected ? 'bg-highlight-orange text-white' : isDayRevision ? 'bg-purple-50 text-purple-600 border border-purple-100' : 'bg-gray-50 text-gray-600'}`}>
-                                        D{day.day}
-                                    </div>
-                                    <div className="min-w-0">
-                                        <h4 className={`text-sm font-semibold truncate ${isSelected ? 'text-highlight-dark' : 'text-gray-700'}`}>
-                                            {(day.topics && day.topics[0]) || `Day ${day.day}`}
-                                        </h4>
-                                        <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
-                                            <Clock className="w-3 h-3" /> {day.estimated_time || 'Allocated hours'}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                {isDayRevision && (
-                                    <span className="text-[10px] bg-purple-100 text-purple-700 font-bold px-2 py-0.5 rounded-full uppercase flex-shrink-0">
-                                        Revision
-                                    </span>
-                                )}
-                            </motion.button>
-                        );
-                    })}
-                </div>
-
-                {/* Right Side: Dynamic Content Panel with Page Navigation Link */}
-                <div className="lg:col-span-8">
-                    <AnimatePresence mode="wait">
-                        {currentDayData && (
+                    {/* Metric Cards */}
+                    <div className="perspective-3d">
+                        <div className="flex flex-wrap gap-2.5">
                             <motion.div
-                                key={`${selectedDayIndex}-${activeTab}`}
-                                initial={{ opacity: 0, y: 15 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -15 }}
-                                transition={{ duration: 0.2 }}
-                                className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6"
+                                whileHover={{ rotateX: 4, rotateY: -4, translateY: -3 }}
+                                className="flex items-center gap-2.5 px-4 py-2.5 glass-light rounded-xl"
+                                style={{ transformStyle: 'preserve-3d' }}
                             >
-                                {/* Top info card bar */}
-                                <div className="border-b border-gray-100 pb-4 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                    <div>
-                                        <span className={`text-xs font-bold uppercase tracking-wider px-2.5 py-1 rounded-md ${isRevisionDay ? 'bg-purple-50 text-purple-700' : 'bg-orange-50 text-highlight-orange'}`}>
-                                            Day {currentDayData.day} {activeTab === 'notes' ? 'Study Notes' : 'Focus'}
-                                        </span>
-                                        <h2 className="text-xl font-bold text-highlight-dark mt-2">
-                                            {(currentDayData.topics && currentDayData.topics.join(' • ')) || `Day ${currentDayData.day}`}
-                                        </h2>
+                                <Award className="w-5 h-5 text-highlight-orange" />
+                                <div>
+                                    <p className="text-[10px] text-muted font-semibold uppercase tracking-wider">Level</p>
+                                    <p className="text-xs font-extrabold text-highlight-dark">{skillLevel} ({score}/10)</p>
+                                </div>
+                            </motion.div>
+                            <motion.div
+                                whileHover={{ rotateX: 4, rotateY: -4, translateY: -3 }}
+                                className="flex items-center gap-2.5 px-4 py-2.5 glass-light rounded-xl"
+                                style={{ transformStyle: 'preserve-3d' }}
+                            >
+                                <Calendar className="w-5 h-5 text-blue-500" />
+                                <div>
+                                    <p className="text-[10px] text-muted font-semibold uppercase tracking-wider">Timeline</p>
+                                    <p className="text-xs font-extrabold text-highlight-dark">{totalDays} Days</p>
+                                </div>
+                            </motion.div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Tab Navigation */}
+                <div className="flex border-b border-gray-200/60 mb-6 gap-1">
+                    {[
+                        { id: 'roadmap', icon: Calendar, label: 'Roadmap Plan' },
+                        { id: 'notes', icon: FileText, label: 'Study Notes' },
+                    ].map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`flex items-center gap-2 px-5 py-3 font-semibold text-sm transition-all border-b-2 ${activeTab === tab.id
+                                ? 'border-[var(--brand-orange)] text-highlight-orange'
+                                : 'border-transparent text-muted hover:text-gray-700'
+                            }`}
+                        >
+                            <tab.icon className="w-4 h-4" /> {tab.label}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Main Content Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+                    {/* ─── LEFT: Timeline Day List ─── */}
+                    <div className="lg:col-span-4 relative">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted px-1 mb-3">Your Course Schedule</p>
+
+                        {/* Timeline container */}
+                        <div className="relative max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
+                            {/* Vertical timeline line */}
+                            <div className="timeline-line" />
+
+                            <div className="space-y-2 pl-2">
+                                {roadmap.map((day, index) => {
+                                    const isSelected = selectedDayIndex === index;
+                                    const isDayRevision = day.day > embedDay;
+
+                                    return (
+                                        <motion.button
+                                            key={index}
+                                            whileHover={{ x: 4 }}
+                                            onClick={() => setSelectedDayIndex(index)}
+                                            className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all duration-200 ${isSelected
+                                                ? 'bg-orange-50/80 border border-orange-200/60 shadow-sm'
+                                                : 'bg-white/60 border border-transparent hover:border-orange-100 hover:bg-white/80'
+                                            }`}
+                                        >
+                                            {/* Timeline Node */}
+                                            <div className={`timeline-node ${isSelected
+                                                ? 'timeline-node-active'
+                                                : isDayRevision
+                                                    ? 'timeline-node-revision'
+                                                    : 'timeline-node-default'
+                                            }`}>
+                                                D{day.day}
+                                            </div>
+
+                                            {/* Day Info */}
+                                            <div className="min-w-0 flex-1">
+                                                <h4 className={`text-sm font-semibold truncate ${isSelected ? 'text-highlight-dark' : 'text-gray-700'}`}>
+                                                    {(day.topics && day.topics[0]) || `Day ${day.day}`}
+                                                </h4>
+                                                <p className="text-[11px] text-muted flex items-center gap-1 mt-0.5">
+                                                    <Clock className="w-3 h-3" /> {day.estimated_time || 'Allocated hours'}
+                                                </p>
+                                            </div>
+
+                                            {/* Revision Badge */}
+                                            {isDayRevision && (
+                                                <span className="badge-purple text-[9px] px-2 py-0.5 flex-shrink-0">
+                                                    Revision
+                                                </span>
+                                            )}
+                                        </motion.button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* ─── RIGHT: Dynamic Content Panel ─── */}
+                    <div className="lg:col-span-8">
+                        <AnimatePresence mode="wait">
+                            {currentDayData && (
+                                <motion.div
+                                    key={`${selectedDayIndex}-${activeTab}`}
+                                    initial={{ opacity: 0, y: 15 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -15 }}
+                                    transition={{ duration: 0.25 }}
+                                    className="glass-light rounded-2xl p-6 relative overflow-hidden"
+                                >
+                                    {/* Top accent */}
+                                    <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-[var(--brand-orange)] to-transparent opacity-30" />
+
+                                    {/* Info Header */}
+                                    <div className="border-b border-gray-100 pb-4 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                        <div>
+                                            <span className={`text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg inline-block mb-2 ${isRevisionDay ? 'badge-purple' : 'badge-orange'}`}>
+                                                Day {currentDayData.day} {activeTab === 'notes' ? 'Notes' : 'Focus'}
+                                            </span>
+                                            <h2 className="text-xl font-extrabold text-highlight-dark tracking-tight">
+                                                {(currentDayData.topics && currentDayData.topics.join(' • ')) || `Day ${currentDayData.day}`}
+                                            </h2>
+                                        </div>
+                                        <motion.button
+                                            whileHover={{ scale: 1.03 }}
+                                            whileTap={{ scale: 0.97 }}
+                                            onClick={() => setFullViewDayData(currentDayData)}
+                                            className="btn-primary text-xs px-4 py-2.5 self-start sm:self-auto"
+                                        >
+                                            Deep-dive <ArrowRight size={14} />
+                                        </motion.button>
                                     </div>
 
-                                    {/* මචං, මෙන්න මේ බටන් එක ක්ලික් කරාම තමයි වෙනම ෆුල් පේජ් එකකට යන්නේ */}
-                                    <button
-                                        onClick={() => setFullViewDayData(currentDayData)}
-                                        className="text-xs font-bold text-white bg-highlight-orange hover:bg-orange-600 px-3.5 py-2 rounded-xl flex items-center gap-1 shadow-sm transition-all self-start sm:self-auto"
-                                    >
-                                        Deep-dive Topic <ArrowRight size={14} />
-                                    </button>
-                                </div>
-
-                                {/* TAB 1: ROADMAP VIEW */}
-                                {activeTab === 'roadmap' && (
-                                    <>
-                                        {isRevisionDay ? (
-                                            <div className="mb-6 bg-gradient-to-br from-purple-50 via-indigo-50/30 to-white border border-purple-100 rounded-xl p-5 relative overflow-hidden">
-                                                <div className="absolute right-4 top-4 text-purple-200/50 pointer-events-none">
-                                                    <Sparkles className="w-24 h-24 stroke-[1.5]" />
-                                                </div>
-                                                <div className="flex gap-3 items-start relative z-10">
-                                                    <div className="p-2.5 bg-purple-600 text-white rounded-xl shadow-md flex-shrink-0">
-                                                        <BookOpen className="w-5 h-5" />
+                                    {/* TAB: ROADMAP */}
+                                    {activeTab === 'roadmap' && (
+                                        <>
+                                            {isRevisionDay ? (
+                                                <div className="mb-6 bg-gradient-to-br from-purple-50/80 via-indigo-50/30 to-white border border-purple-100 rounded-xl p-5 relative overflow-hidden">
+                                                    <div className="absolute right-4 top-4 text-purple-200/30 pointer-events-none">
+                                                        <Sparkles className="w-20 h-20 stroke-[1.5]" />
                                                     </div>
-                                                    <div>
-                                                        <h3 className="font-bold text-purple-900 text-base">🎯 Target Practice & Revision Mode Active</h3>
-                                                        <p className="text-purple-700/90 text-sm mt-1 max-w-xl">
-                                                            The core syllabus is complete. Use these final days for mock challenges, review, and implementation practice.
+                                                    <div className="flex gap-3 items-start relative z-10">
+                                                        <div className="p-2.5 bg-gradient-to-br from-purple-600 to-purple-700 text-white rounded-xl shadow-md flex-shrink-0">
+                                                            <Target className="w-5 h-5" />
+                                                        </div>
+                                                        <div>
+                                                            <h3 className="font-bold text-purple-900 text-sm">Revision & Practice Mode</h3>
+                                                            <p className="text-purple-700/90 text-xs mt-1 max-w-xl leading-relaxed">
+                                                                Core syllabus complete. Use these final days for mock challenges, review, and implementation practice.
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ) : currentDayData.resources?.length > 0 ? (
+                                                <div className="mb-6 space-y-3">
+                                                    <div className="flex justify-between items-center">
+                                                        <p className="text-[10px] font-bold text-muted uppercase tracking-widest flex items-center gap-1.5">
+                                                            <PlayCircle className="w-3.5 h-3.5 text-red-500" /> Core Video Resources
                                                         </p>
+                                                        <button
+                                                            onClick={() => setActiveTab('notes')}
+                                                            className="text-xs font-bold text-highlight-orange hover:underline flex items-center gap-1"
+                                                        >
+                                                            <FileText size={12} /> View Notes
+                                                        </button>
+                                                    </div>
+                                                    <div className="grid gap-4">
+                                                        {currentDayData.resources.map((resource, resourceIndex) => {
+                                                            const embedUrl = getEmbedUrl(resource);
+                                                            return (
+                                                                <div key={resourceIndex} className="rounded-xl border border-gray-100 bg-white/80 p-4 shadow-sm hover:shadow-md transition-shadow">
+                                                                    <h3 className="font-bold text-highlight-dark text-sm mb-1.5">{resource.title}</h3>
+                                                                    <p className="text-xs text-muted mb-3 leading-relaxed">{resource.summary}</p>
+                                                                    {embedUrl ? (
+                                                                        <div className="aspect-video w-full rounded-xl overflow-hidden border border-gray-200 bg-black shadow-inner">
+                                                                            <iframe
+                                                                                className="w-full h-full"
+                                                                                src={embedUrl}
+                                                                                title={resource.title}
+                                                                                frameBorder="0"
+                                                                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                                                                allowFullScreen
+                                                                            />
+                                                                        </div>
+                                                                    ) : (
+                                                                        <a
+                                                                            href={resource.embed_url || resource.url}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="btn-primary text-xs inline-flex"
+                                                                        >
+                                                                            Open Resource <ExternalLink size={12} />
+                                                                        </a>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
                                                     </div>
                                                 </div>
-                                            </div>
-                                        ) : currentDayData.resources?.length > 0 ? (
-                                            <div className="mb-6 space-y-4">
-                                                <div className="flex justify-between items-center">
-                                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
-                                                        <PlayCircle className="w-3.5 h-3.5 text-red-500" /> Core Video Resources
-                                                    </p>
-                                                    <button
-                                                        onClick={() => setActiveTab('notes')}
-                                                        className="text-xs font-semibold text-highlight-orange hover:underline flex items-center gap-1"
-                                                    >
-                                                        <FileText size={12} /> View Day Notes
-                                                    </button>
-                                                </div>
-                                                <div className="grid gap-4">
-                                                    {currentDayData.resources.map((resource, resourceIndex) => {
-                                                        const embedUrl = getEmbedUrl(resource);
+                                            ) : null}
+
+                                            {/* Task Checklist */}
+                                            <div>
+                                                <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                                                    <CheckSquare className="w-3.5 h-3.5 text-blue-500" /> Actionable Objectives
+                                                </p>
+                                                <div className="space-y-2">
+                                                    {(currentDayData.tasks || []).map((task, tIdx) => {
+                                                        const isChecked = !!completedTasks[`${currentDayData.day}-${tIdx}`];
                                                         return (
-                                                            <div key={resourceIndex} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                                                                <h3 className="font-semibold text-highlight-dark mb-2">{resource.title}</h3>
-                                                                <p className="text-sm text-muted mb-4">{resource.summary}</p>
-                                                                {embedUrl ? (
-                                                                    <div className="aspect-video w-full rounded-xl overflow-hidden border border-gray-200 bg-black shadow-inner">
-                                                                        <iframe
-                                                                            className="w-full h-full"
-                                                                            src={embedUrl}
-                                                                            title={resource.title}
-                                                                            frameBorder="0"
-                                                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                                                            allowFullScreen
-                                                                        ></iframe>
-                                                                    </div>
-                                                                ) : (
-                                                                    <a
-                                                                        href={resource.embed_url || resource.url}
-                                                                        target="_blank"
-                                                                        rel="noopener noreferrer"
-                                                                        className="btn-primary text-xs inline-flex whitespace-nowrap"
-                                                                    >
-                                                                        Open Resource →
-                                                                    </a>
-                                                                )}
-                                                            </div>
+                                                            <motion.div
+                                                                key={tIdx}
+                                                                whileHover={{ x: 3 }}
+                                                                onClick={() => toggleTask(currentDayData.day, tIdx)}
+                                                                className={`p-3.5 rounded-xl border transition-all duration-200 flex items-start gap-3 cursor-pointer ${isChecked
+                                                                    ? 'bg-gray-50 border-gray-200/60 opacity-50'
+                                                                    : 'bg-white/60 border-gray-100 hover:border-orange-200 hover:shadow-sm'
+                                                                }`}
+                                                            >
+                                                                <div className={`mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all duration-200 ${isChecked
+                                                                    ? 'bg-blue-500 border-blue-500 text-white'
+                                                                    : 'border-gray-300'
+                                                                }`}>
+                                                                    {isChecked && <CheckCircle size={12} />}
+                                                                </div>
+                                                                <span className={`text-sm leading-relaxed ${isChecked ? 'line-through text-gray-400' : 'text-gray-700 font-medium'}`}>
+                                                                    {task}
+                                                                </span>
+                                                            </motion.div>
                                                         );
                                                     })}
                                                 </div>
                                             </div>
-                                        ) : null}
+                                        </>
+                                    )}
 
-                                        <div>
-                                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-1">
-                                                <CheckSquare className="w-3.5 h-3.5 text-highlight-blue" /> Actionable Objectives For Today
-                                            </p>
-                                            <div className="space-y-2.5">
-                                                {(currentDayData.tasks || []).map((task, tIdx) => {
-                                                    const isChecked = !!completedTasks[`${currentDayData.day}-${tIdx}`];
-                                                    return (
-                                                        <div
-                                                            key={tIdx}
-                                                            onClick={() => toggleTask(currentDayData.day, tIdx)}
-                                                            className={`p-3.5 rounded-xl border transition-all flex items-start gap-3 cursor-pointer ${isChecked ? 'bg-slate-50/80 border-gray-200/60 opacity-60' : 'bg-white border-gray-100 hover:border-orange-200'}`}
-                                                        >
-                                                            <div className={`mt-0.5 w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 transition-colors ${isChecked ? 'bg-highlight-blue border-highlight-blue text-white' : 'border-gray-300'}`}>
-                                                                {isChecked && <span className="text-xs font-bold">✓</span>}
-                                                            </div>
-                                                            <span className={`text-sm leading-relaxed ${isChecked ? 'line-through text-gray-400' : 'text-gray-700 font-medium'}`}>
-                                                                {task}
-                                                            </span>
-                                                        </div>
-                                                    );
-                                                })}
+                                    {/* TAB: NOTES */}
+                                    {activeTab === 'notes' && (
+                                        <div className="space-y-5">
+                                            <div className="bg-orange-50/50 border border-orange-100 rounded-xl p-4 flex gap-3">
+                                                <BookOpen className="text-highlight-orange w-5 h-5 mt-0.5 flex-shrink-0" />
+                                                <div>
+                                                    <h4 className="font-bold text-highlight-dark text-sm">Comprehensive Briefing</h4>
+                                                    <p className="text-xs text-muted mt-1 leading-relaxed">
+                                                        Review core concepts and documentations compiled for Day {currentDayData.day}.
+                                                    </p>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </>
-                                )}
 
-                                {/* TAB 2: NOTES VIEW */}
-                                {activeTab === 'notes' && (
-                                    <div className="space-y-6">
-                                        <div className="bg-orange-50/50 border border-orange-100 rounded-xl p-4 flex gap-3">
-                                            <BookOpen className="text-highlight-orange w-5 h-5 mt-0.5 flex-shrink-0" />
                                             <div>
-                                                <h4 className="font-bold text-gray-800 text-sm">Comprehensive Briefing</h4>
-                                                <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-                                                    Review core concepts, summaries, and structural documentations compiled explicitly for Day {currentDayData.day}.
-                                                </p>
+                                                <h3 className="text-base font-bold text-highlight-dark mb-3">Topic Summary & Key Notes</h3>
+                                                {currentDayData.resources?.length > 0 ? (
+                                                    currentDayData.resources.map((res, rIdx) => (
+                                                        <div key={rIdx} className="mb-3 bg-white/60 p-4 rounded-xl border border-gray-100">
+                                                            <h5 className="font-semibold text-sm text-highlight-dark mb-1">{res.title}</h5>
+                                                            <p className="text-sm text-muted leading-relaxed">{res.summary || 'No extended notes available.'}</p>
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <p className="text-sm text-muted italic">No resource notes for this revision day. Focus on objectives!</p>
+                                                )}
+
+                                                <div className="mt-5 border-t border-gray-100 pt-4">
+                                                    <h4 className="text-xs font-bold text-highlight-dark mb-3 uppercase tracking-wider">Core Concepts</h4>
+                                                    <ul className="space-y-2">
+                                                        {(currentDayData.topics || []).map((tp, i) => (
+                                                            <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
+                                                                <CheckCircle size={14} className="text-emerald-500 mt-0.5 flex-shrink-0" />
+                                                                Deep-dive architecture of <span className="font-semibold text-highlight-dark">{tp}</span>
+                                                            </li>
+                                                        ))}
+                                                        <li className="flex items-start gap-2 text-sm text-gray-600">
+                                                            <CheckCircle size={14} className="text-emerald-500 mt-0.5 flex-shrink-0" />
+                                                            Implement practical hands-on patterns.
+                                                        </li>
+                                                    </ul>
+                                                </div>
                                             </div>
+
+                                            <button
+                                                onClick={() => setActiveTab('roadmap')}
+                                                className="btn-secondary text-xs"
+                                            >
+                                                <ArrowLeft size={14} /> Back to Checklist
+                                            </button>
                                         </div>
-
-                                        <div className="prose prose-slate max-w-none">
-                                            <h3 className="text-lg font-bold text-highlight-dark mb-2">Topic Summary & Key Notes</h3>
-                                            {currentDayData.resources?.length > 0 ? (
-                                                currentDayData.resources.map((res, rIdx) => (
-                                                    <div key={rIdx} className="mb-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
-                                                        <h5 className="font-semibold text-sm text-gray-800 mb-1">{res.title}</h5>
-                                                        <p className="text-sm text-gray-600 leading-relaxed">{res.summary || 'No extensive note summaries provided for this resource.'}</p>
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <p className="text-sm text-gray-500 italic">No resource descriptions available for this revision day. Focus on final objectives!</p>
-                                            )}
-
-                                            <div className="mt-6 border-t border-gray-100 pt-4">
-                                                <h4 className="text-sm font-bold text-gray-700 mb-2">Core Concepts To Remember</h4>
-                                                <ul className="list-disc pl-5 space-y-1 text-sm text-gray-600">
-                                                    {(currentDayData.topics || []).map((tp, i) => (
-                                                        <li key={i}>Deep-dive core architecture of <span className="font-semibold text-gray-800">{tp}</span></li>
-                                                    ))}
-                                                    <li>Implement practical hands-on patterns.</li>
-                                                </ul>
-                                            </div>
-                                        </div>
-
-                                        <button
-                                            onClick={() => setActiveTab('roadmap')}
-                                            className="mt-4 text-xs font-bold text-white bg-highlight-dark hover:bg-gray-800 px-4 py-2 rounded-lg transition-all inline-flex items-center gap-1"
-                                        >
-                                            ← Back To Task Checklist
-                                        </button>
-                                    </div>
-                                )}
-
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                                    )}
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </div>
                 </div>
             </div>
         </main>
+    );
+}
+
+// Helper component used by the summary page button
+function Rocket({ size = 16, ...props }) {
+    return (
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width={size}
+            height={size}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            {...props}
+        >
+            <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
+            <path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" />
+            <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" />
+            <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
+        </svg>
     );
 }

@@ -2,124 +2,398 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer components {
-  .glass-card {
-    @apply bg-glass backdrop-blur-xl border border-white/10 shadow-2xl;
+/* ═══════════════════════════════════════════════════════════════════
+   LEARNPATH AI — PREMIUM DESIGN SYSTEM
+   Brand: Deep Slate (#0A192F) + Vibrant Orange (#FF8C00) + Clean White
+   Typography: Inter (Google Fonts)
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── BASE LAYER ────────────────────────────────────────────────── */
+@layer base {
+  :root {
+    /* Brand Colors */
+    --brand-orange: #FF8C00;
+    --brand-orange-hover: #E67E00;
+    --brand-orange-light: #FFF3E0;
+    --brand-dark: #0A192F;
+    --brand-dark-soft: #112240;
+
+    /* Neutral Palette */
+    --text-color: #0B1220;
+    --text-muted: #64748b;
+    --card-bg: #FFFFFF;
+    --surface-bg: #F8FAFC;
+    --border-light: rgba(10, 25, 47, 0.08);
+    --border-medium: rgba(10, 25, 47, 0.12);
+
+    /* Semantic Colors */
+    --emerald: #10B981;
+    --blue-accent: #3B82F6;
+    --purple-accent: #8B5CF6;
+    --red-accent: #EF4444;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 3px rgba(10, 25, 47, 0.04), 0 1px 2px rgba(10, 25, 47, 0.06);
+    --shadow-md: 0 4px 16px rgba(10, 25, 47, 0.06), 0 2px 4px rgba(10, 25, 47, 0.04);
+    --shadow-lg: 0 12px 40px rgba(10, 25, 47, 0.08), 0 4px 12px rgba(10, 25, 47, 0.04);
+    --shadow-xl: 0 20px 60px rgba(10, 25, 47, 0.10), 0 8px 24px rgba(10, 25, 47, 0.06);
+    --shadow-orange: 0 8px 30px rgba(255, 140, 0, 0.15);
+    --shadow-3d: 0 20px 60px rgba(10, 25, 47, 0.12), 0 8px 20px rgba(10, 25, 47, 0.06);
+
+    /* Animation Curves */
+    --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+    --ease-3d: cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    color: var(--text-color);
+    background: var(--surface-bg);
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  ::selection {
+    background: rgba(255, 140, 0, 0.2);
+    color: var(--brand-dark);
   }
 }
 
-@layer utilities {
-  :root {
-    --brand-orange: #FF8C00;
-    --brand-dark: #0A192F;
-    --text-color: #0B1220;
-    --card-bg: #FFFFFF;
-    --muted: #64748b;
+
+/* ── COMPONENT LAYER ───────────────────────────────────────────── */
+@layer components {
+
+  /* ── Glass Effects ──────────────────────────────────────────── */
+  .glass-light {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(16px) saturate(1.8);
+    -webkit-backdrop-filter: blur(16px) saturate(1.8);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    box-shadow: var(--shadow-lg),
+                inset 0 1px 0 rgba(255, 255, 255, 0.6);
   }
 
-  /* Light Theme */
+  .glass-card {
+    @apply bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl;
+  }
+
+  /* ── Card Styles ────────────────────────────────────────────── */
+  .card-light {
+    @apply bg-white rounded-2xl p-6 border transition-all duration-300;
+    border-color: var(--border-light);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .card-light:hover {
+    box-shadow: var(--shadow-md);
+    border-color: var(--border-medium);
+    transform: translateY(-2px);
+  }
+
+  /* ── Button System ──────────────────────────────────────────── */
+  .btn-primary {
+    @apply px-6 py-3 text-white rounded-xl font-bold text-sm
+           transition-all duration-200 inline-flex items-center justify-center gap-2
+           active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
+    background: linear-gradient(135deg, var(--brand-orange), #FF6B00);
+    box-shadow: var(--shadow-orange);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    transform: translateY(-1px) scale(1.02);
+    box-shadow: 0 12px 35px rgba(255, 140, 0, 0.25);
+    filter: brightness(1.05);
+  }
+
+  .btn-secondary {
+    @apply px-6 py-3 rounded-xl font-bold text-sm
+           transition-all duration-200 inline-flex items-center justify-center gap-2
+           active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+    background: var(--surface-bg);
+    color: var(--brand-dark);
+    border: 1.5px solid var(--border-medium);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    transform: translateY(-1px) scale(1.02);
+    background: #F1F5F9;
+    box-shadow: var(--shadow-md);
+  }
+
+  /* ── Input System ───────────────────────────────────────────── */
+  .input-light {
+    @apply w-full rounded-xl px-4 py-3 text-sm font-medium outline-none transition-all duration-200;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1.5px solid var(--border-medium);
+    color: var(--text-color);
+  }
+
+  .input-light::placeholder {
+    color: #94A3B8;
+    font-weight: 400;
+  }
+
+  .input-light:focus {
+    border-color: var(--brand-orange);
+    box-shadow: 0 0 0 3px rgba(255, 140, 0, 0.1), var(--shadow-sm);
+  }
+
+  /* ── Typography System ──────────────────────────────────────── */
+  .heading-primary {
+    @apply text-4xl md:text-5xl font-extrabold mb-6 leading-tight tracking-tight;
+    color: var(--brand-dark);
+  }
+
+  .heading-secondary {
+    @apply text-2xl md:text-3xl font-bold mb-4 leading-snug tracking-tight;
+    color: var(--brand-dark);
+  }
+
+  .text-muted {
+    color: var(--text-muted);
+  }
+
+  /* ── Badge System ───────────────────────────────────────────── */
+  .badge-orange {
+    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold;
+    background: var(--brand-orange-light);
+    color: var(--brand-orange);
+  }
+
+  .badge-dark {
+    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold;
+    background: #E8EDF5;
+    color: var(--brand-dark);
+  }
+
+  .badge-emerald {
+    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold;
+    background: #D1FAE5;
+    color: #065F46;
+  }
+
+  .badge-purple {
+    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold;
+    background: #EDE9FE;
+    color: #6D28D9;
+  }
+}
+
+
+/* ── UTILITY LAYER ─────────────────────────────────────────────── */
+@layer utilities {
+
+  /* ── Theme ──────────────────────────────────────────────────── */
   .theme-light {
     background-color: var(--card-bg);
     color: var(--text-color);
   }
 
-  /* 3D Perspective Effects */
+  .gradient-primary {
+    background: linear-gradient(145deg, #FFFFFF 0%, var(--surface-bg) 40%, #FFF8F0 100%);
+  }
+
+  .gradient-accent {
+    background: linear-gradient(135deg, var(--brand-orange) 0%, #FF6B00 100%);
+  }
+
+  /* ── 3D Interactive System ──────────────────────────────────── */
   .perspective-3d {
     perspective: 1200px;
   }
 
   .card-3d {
     transform-style: preserve-3d;
-    transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+    transition: transform 0.5s var(--ease-3d), box-shadow 0.5s var(--ease-3d);
   }
 
   .card-3d:hover {
-    transform: rotateX(6deg) rotateY(-6deg) translateY(-6px);
+    transform: rotateX(4deg) rotateY(-4deg) translateY(-8px) scale(1.01);
+    box-shadow: var(--shadow-3d);
   }
 
-  /* Text Highlights - Orange, Dark Blue, Black */
+  /* ── Text Highlights ────────────────────────────────────────── */
   .text-highlight-orange {
     color: var(--brand-orange) !important;
-    font-weight: 600;
+    font-weight: 700;
   }
 
   .text-highlight-dark {
     color: var(--brand-dark) !important;
-    font-weight: 600;
+    font-weight: 700;
   }
 
   .text-highlight-black {
     color: #000000 !important;
+    font-weight: 700;
+  }
+
+  .text-highlight-blue {
+    color: var(--blue-accent) !important;
     font-weight: 600;
   }
 
-  /* Lift effect with shadow */
+  .bg-highlight-orange {
+    background-color: var(--brand-orange);
+  }
+
+  /* ── Gradient Text ──────────────────────────────────────────── */
+  .gradient-text {
+    background: linear-gradient(135deg, var(--brand-dark) 0%, #334155 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .gradient-text-orange {
+    background: linear-gradient(135deg, var(--brand-orange) 0%, #FF6B00 60%, #E65100 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ── Lift / Hover Effects ───────────────────────────────────── */
   .lift {
-    transform: translateY(-6px);
-    box-shadow: 0 12px 30px rgba(10, 25, 47, 0.08);
-    transition: all 0.3s ease;
+    transition: transform 0.3s var(--ease-smooth), box-shadow 0.3s var(--ease-smooth);
   }
 
   .lift:hover {
-    transform: translateY(-12px);
-    box-shadow: 0 16px 40px rgba(10, 25, 47, 0.12);
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
   }
 
-  /* Glass effect for light theme */
-  .glass-light {
-    background: rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(10, 25, 47, 0.1);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+  /* ── Timeline System (Dashboard) ────────────────────────────── */
+  .timeline-line {
+    position: absolute;
+    left: 19px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(180deg, var(--brand-orange) 0%, var(--border-medium) 100%);
+    border-radius: 1px;
   }
 
-  /* Smooth gradient backgrounds */
-  .gradient-primary {
-    background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%);
+  .timeline-node {
+    position: relative;
+    z-index: 2;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 12px;
+    flex-shrink: 0;
+    transition: all 0.3s var(--ease-smooth);
+    box-shadow: var(--shadow-sm);
   }
 
-  .gradient-accent {
-    background: linear-gradient(135deg, #FF8C00 0%, #FF6B00 100%);
+  .timeline-node-active {
+    background: linear-gradient(135deg, var(--brand-orange), #FF6B00);
+    color: white;
+    box-shadow: var(--shadow-orange);
   }
 
-  /* Button styles */
-  .btn-primary {
-    @apply px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-semibold transition-all transform hover:scale-105 active:scale-95;
+  .timeline-node-default {
+    background: white;
+    color: var(--text-muted);
+    border: 2px solid var(--border-medium);
   }
 
-  .btn-secondary {
-    @apply px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-lg font-semibold transition-all transform hover:scale-105 active:scale-95;
+  .timeline-node-revision {
+    background: #F3E8FF;
+    color: var(--purple-accent);
+    border: 2px solid #DDD6FE;
   }
 
-  /* Card styles */
-  .card-light {
-    @apply bg-white rounded-2xl p-6 shadow-md hover:shadow-lg transition-shadow border border-gray-200;
+  /* ── Custom Scrollbar ───────────────────────────────────────── */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 5px;
   }
 
-  /* Typography enhancements */
-  .heading-primary {
-    @apply text-4xl md:text-5xl font-bold text-highlight-dark mb-6;
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
   }
 
-  .heading-secondary {
-    @apply text-2xl md:text-3xl font-semibold text-highlight-dark mb-4;
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(10, 25, 47, 0.12);
+    border-radius: 10px;
   }
 
-  .text-muted {
-    @apply text-gray-600;
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(10, 25, 47, 0.2);
   }
 
-  /* Input styles for light theme */
-  .input-light {
-    @apply w-full bg-white border-2 border-gray-300 rounded-lg px-4 py-3 text-gray-900 outline-none focus:border-orange-500 focus:shadow-md transition-all;
+  /* ── Floating Background Particles ──────────────────────────── */
+  .floating-orb {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    filter: blur(80px);
+    animation: float-drift 20s ease-in-out infinite;
   }
 
-  /* Badge styles */
-  .badge-orange {
-    @apply inline-block bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-sm font-medium;
+  .floating-orb-orange {
+    background: rgba(255, 140, 0, 0.08);
   }
 
-  .badge-dark {
-    @apply inline-block bg-blue-100 text-blue-900 px-3 py-1 rounded-full text-sm font-medium;
+  .floating-orb-blue {
+    background: rgba(59, 130, 246, 0.06);
+  }
+
+  .floating-orb-purple {
+    background: rgba(139, 92, 246, 0.05);
+  }
+
+  @keyframes float-drift {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    25%      { transform: translate(30px, -20px) scale(1.05); }
+    50%      { transform: translate(-20px, 20px) scale(0.95); }
+    75%      { transform: translate(15px, 10px) scale(1.02); }
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.5; }
+  }
+
+  @keyframes spin-slow {
+    0%   { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  .animate-spin-slow {
+    animation: spin-slow 3s linear infinite;
+  }
+
+  /* ── Progress Bar ───────────────────────────────────────────── */
+  .progress-bar-track {
+    @apply w-full rounded-full overflow-hidden;
+    height: 6px;
+    background: rgba(10, 25, 47, 0.06);
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    border-radius: 9999px;
+    background: linear-gradient(90deg, var(--brand-orange), #FF6B00, #FFAB40);
+    transition: width 0.4s var(--ease-smooth);
   }
 }
