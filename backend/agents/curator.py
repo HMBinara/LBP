@@ -40,7 +40,7 @@ def search_youtube(query, max_results=12):
         print(f"YouTube API Error: {e}")
         return []
 
-def get_curated_resources(topic, skill_level, user_data):
+def get_curated_resources(topic, skill_level, user_data, criteria=None):
     """
     සොයාගත් YouTube වීඩියෝ සමූහය Gemini AI ලවා විශ්ලේෂණය කර,
     පරිශීලකයාගේ ඉලක්කයට වඩාත්ම ගැළපෙන හොඳම වීඩියෝ 7-8 වෙන් කර ගැනීම.
@@ -55,10 +55,10 @@ def get_curated_resources(topic, skill_level, user_data):
     if not raw_resources:
         raise RuntimeError("Unable to fetch YouTube resources for the requested topic.")
 
-    # [FIX] Prompt එක if බ්ලොක් එකෙන් එළියට ගෙන Indentation නිවැරදි කර ඇත.
     prompt = f"""
     User wants to master the topic: '{topic}'.
     Diagnosed skill level: {skill_level}.
+    Assessment criteria: {criteria}
     Specific Sub-topics specified: {sub_topics}
     Primary Educational/Career Goal: {goal}
     Duration allocated: {user_data.get('duration_days')} days
