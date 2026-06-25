@@ -2,8 +2,11 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Loader2, AlertCircle } from 'lucide-react';
 import axios from 'axios';
+// 🎯 Firebase Firestore එක සහ config එක මෙතනින් import කරගන්නවා
+import { db } from '../config/firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
-export default function Quiz({ sessionData, setStep, setFinalPlan }) {
+export default function Quiz({ userId, sessionData, setStep, setFinalPlan }) {
     // Backend එකෙන් ලැබුණු ප්‍රශ්න 10 වෙන් කර ගැනීම
     const normalizeQuestions = (rawQuiz) => {
         if (rawQuiz && Array.isArray(rawQuiz.quiz)) return rawQuiz.quiz;
@@ -48,7 +51,7 @@ export default function Quiz({ sessionData, setStep, setFinalPlan }) {
         if (currentQuestion < quizQuestions.length - 1) {
             setCurrentQuestion(currentQuestion + 1);
         } else {
-            // ප්‍රශ්න 10ම ඉවරයි නම් ස්වයංක්‍රීයව Backend එකට Submit කරනවා
+            // ප්‍රශ්න 10ම ඉවරයි නම් ස්වයංක්‍රීයව Backend එකට සහ Firestore එකට Submit කරනවා
             submitQuizToBackend(newAnswers);
         }
     };
@@ -57,7 +60,7 @@ export default function Quiz({ sessionData, setStep, setFinalPlan }) {
         setIsSubmitting(true);
         setError(null);
         try {
-            // Backend එකේ /submit-quiz endpoint එකට දත්ත යැවීම
+            // 1. Backend එකේ /submit-quiz endpoint එකට දත්ත යැවීම
             const response = await axios.post('http://localhost:5000/submit-quiz', {
                 session_id: sessionId,
                 answers: finalAnswers
@@ -69,6 +72,24 @@ export default function Quiz({ sessionData, setStep, setFinalPlan }) {
                     throw new Error('Study roadmap was not generated correctly.');
                 }
 
+                // 2. 🎯 සාර්ථකව ලැබුණු ප්‍රතිඵල දැනට ලොග් වී සිටින පරිශීලකයාගේ ID එක යටතේ Firestore එකට සේව් කිරීම
+                try {
+                    const quizCollectionRef = collection(db, "quiz_sessions");
+                    await addDoc(quizCollectionRef, {
+                        userId: userId, // 👈 ලොග් වුනු පරිශීලකයාගේ අද්විතීය ID එක
+                        sessionId: sessionId || null,
+                        topic: sessionData?.user_input?.topic || "General",
+                        answers: finalAnswers, // සිසුවා තෝරපු උත්තර ටික
+                        score: response.data.score || null, // ලැබුණු ලකුණු ප්‍රමාණය
+                        skillLevel: response.data.skill_level || null, // AI එකෙන් දුන්න Skill Level එක
+                        createdAt: serverTimestamp() // සේව් කරපු වෙලාව
+                    });
+                    console.log("Quiz data saved to Firestore successfully for user:", userId);
+                } catch (fsErr) {
+                    // Firestore එකට සේව් වෙද්දී අවුලක් වුනොත් App එක crash නොවී පවත්වා ගැනීමට
+                    console.error("Firestore Save Error: ", fsErr);
+                }
+
                 // Backend එකෙන් ලැබෙන assessment result සහ final study plan එක state එකට දමනවා
                 setFinalPlan({
                     score: response.data.score,
@@ -78,6 +99,7 @@ export default function Quiz({ sessionData, setStep, setFinalPlan }) {
                     topic: sessionData?.user_input?.topic,
                     duration: sessionData?.user_input?.duration_days
                 });
+
                 // කෙලින්ම Glassmorphic Dashboard (Step 3) එකට පරිශීලකයා රැගෙන යාම
                 setStep(3);
             } else {
