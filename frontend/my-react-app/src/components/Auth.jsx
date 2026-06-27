@@ -2,19 +2,28 @@ import { useState } from 'react';
 import { auth, googleProvider } from '../config/firebase';
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, signInWithPopup } from 'firebase/auth';
 import { motion } from 'framer-motion';
-import { Lock, Mail, User, LogIn, UserPlus, Loader2, Sparkles, ShieldCheck, Zap } from 'lucide-react';
+import { Lock, Mail, User, LogIn, UserPlus, Loader2, Sparkles, ShieldCheck, Zap, Eye, EyeOff } from 'lucide-react';
 
 export default function Auth({ onAuthSuccess }) {
     const [isLogin, setIsLogin] = useState(true);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [username, setUsername] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+
+        if (!isLogin && password !== confirmPassword) {
+            setError('Passwords do not match!');
+            return;
+        }
+
         setIsLoading(true);
 
         try {
@@ -102,11 +111,11 @@ export default function Auth({ onAuthSuccess }) {
                     <div className="flex bg-gray-100/80 p-1 rounded-xl border border-gray-200/50 mb-6">
                         <button
                             type="button"
-                            onClick={() => { setIsLogin(true); setError(''); }}
+                            onClick={() => { setIsLogin(true); setError(''); setConfirmPassword(''); }}
                             className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all duration-200 flex items-center justify-center gap-1.5 ${isLogin
                                 ? 'bg-gradient-to-r from-[var(--brand-orange)] to-[#FF6B00] text-white shadow-md'
                                 : 'text-gray-500 hover:text-gray-700'
-                            }`}
+                                }`}
                         >
                             <LogIn size={14} /> Login
                         </button>
@@ -116,7 +125,7 @@ export default function Auth({ onAuthSuccess }) {
                             className={`flex-1 py-2.5 text-xs font-bold rounded-lg transition-all duration-200 flex items-center justify-center gap-1.5 ${!isLogin
                                 ? 'bg-gradient-to-r from-[var(--brand-orange)] to-[#FF6B00] text-white shadow-md'
                                 : 'text-gray-500 hover:text-gray-700'
-                            }`}
+                                }`}
                         >
                             <UserPlus size={14} /> Sign Up
                         </button>
@@ -187,15 +196,56 @@ export default function Auth({ onAuthSuccess }) {
                             <div className="relative">
                                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                                 <input
-                                    type="password"
+                                    type={showPassword ? 'text' : 'password'}
                                     required
                                     placeholder="••••••••"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="input-light pl-10"
+                                    className="input-light pl-10 pr-10"
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword((prev) => !prev)}
+                                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                                    tabIndex={-1}
+                                >
+                                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                </button>
                             </div>
                         </div>
+
+                        {/* Confirm Password (Signup Only) */}
+                        {!isLogin && (
+                            <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                className="space-y-1.5"
+                            >
+                                <label className="text-xs font-bold text-gray-600 px-1 flex items-center gap-1">
+                                    <Lock size={12} className="text-gray-400" /> Confirm Password
+                                </label>
+                                <div className="relative">
+                                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                    <input
+                                        type={showConfirmPassword ? 'text' : 'password'}
+                                        required
+                                        placeholder="••••••••"
+                                        value={confirmPassword}
+                                        onChange={(e) => setConfirmPassword(e.target.value)}
+                                        className="input-light pl-10 pr-10"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowConfirmPassword((prev) => !prev)}
+                                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                                        tabIndex={-1}
+                                    >
+                                        {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                    </button>
+                                </div>
+                            </motion.div>
+                        )}
 
                         {/* Submit Button */}
                         <button
