@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../config/firebase';
 import {
     Calendar, CheckSquare, PlayCircle, Award, Clock, ArrowLeft, BookOpen,
     Sparkles, FileText, ArrowRight, ExternalLink, CheckCircle, Target,
-    GraduationCap, BarChart3, Zap
+    GraduationCap, BarChart3, Zap, Save, Loader2, X
 } from 'lucide-react';
 
-export default function Dashboard({ finalPlan, setStep }) {
+export default function Dashboard({ finalPlan, setStep, userId }) {
     const skillLevel = finalPlan?.skill_level || 'Beginner';
     const score = Number.isFinite(finalPlan?.score) ? finalPlan.score : 0;
     const roadmap = Array.isArray(finalPlan?.roadmap) ? finalPlan.roadmap : [];
@@ -18,6 +20,35 @@ export default function Dashboard({ finalPlan, setStep }) {
     const [showRoadmap, setShowRoadmap] = useState(false);
     const [activeTab, setActiveTab] = useState('roadmap');
     const [fullViewDayData, setFullViewDayData] = useState(null);
+
+    // Save Roadmap modal state
+    const [showSaveModal, setShowSaveModal] = useState(false);
+    const [saveName, setSaveName] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveSuccess, setSaveSuccess] = useState(false);
+
+    const handleSaveRoadmap = async () => {
+        if (!saveName.trim() || !userId) return;
+        setIsSaving(true);
+        try {
+            await addDoc(collection(db, 'users', userId, 'roadmaps'), {
+                name: saveName.trim(),
+                topic,
+                plan: finalPlan,
+                createdAt: serverTimestamp()
+            });
+            setSaveSuccess(true);
+            setTimeout(() => {
+                setShowSaveModal(false);
+                setSaveSuccess(false);
+                setSaveName('');
+            }, 1200);
+        } catch (err) {
+            console.error('Failed to save roadmap:', err);
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     const currentDayData = roadmap?.[selectedDayIndex] || null;
     const embedDay = useMemo(() => (totalDays >= 3 ? totalDays - 2 : totalDays), [totalDays]);
@@ -219,12 +250,12 @@ export default function Dashboard({ finalPlan, setStep }) {
                                             className={`p-3.5 rounded-xl border transition-all duration-200 flex items-start gap-3 cursor-pointer ${isChecked
                                                 ? 'opacity-50 border-gray-200 bg-gray-50'
                                                 : 'border-gray-100 bg-white hover:border-orange-200 hover:shadow-sm'
-                                            }`}
+                                                }`}
                                         >
                                             <div className={`mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all duration-200 ${isChecked
                                                 ? 'bg-blue-500 border-blue-500 text-white'
                                                 : 'border-gray-300'
-                                            }`}>
+                                                }`}>
                                                 {isChecked && <CheckCircle size={12} />}
                                             </div>
                                             <span className={`text-sm leading-relaxed ${isChecked ? 'line-through text-gray-400' : 'text-gray-700 font-medium'}`}>
@@ -327,9 +358,19 @@ export default function Dashboard({ finalPlan, setStep }) {
                         </p>
                     </div>
 
-                    {/* Metric Cards */}
+                    {/* Metric Cards + Save Button */}
                     <div className="perspective-3d">
-                        <div className="flex flex-wrap gap-2.5">
+                        <div className="flex flex-wrap gap-2.5 items-center">
+                            <motion.button
+                                whileHover={{ scale: 1.03 }}
+                                whileTap={{ scale: 0.97 }}
+                                onClick={() => setShowSaveModal(true)}
+                                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white shadow-md transition-all"
+                                style={{ background: 'linear-gradient(135deg, #10B981, #059669)', boxShadow: '0 6px 20px rgba(16, 185, 129, 0.25)' }}
+                            >
+                                <Save size={14} /> Save Roadmap
+                            </motion.button>
+
                             <motion.div
                                 whileHover={{ rotateX: 4, rotateY: -4, translateY: -3 }}
                                 className="flex items-center gap-2.5 px-4 py-2.5 glass-light rounded-xl"
@@ -356,6 +397,83 @@ export default function Dashboard({ finalPlan, setStep }) {
                     </div>
                 </div>
 
+                {/* ─── SAVE ROADMAP MODAL ─── */}
+                <AnimatePresence>
+                    {showSaveModal && (
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                            style={{ background: 'rgba(15, 23, 42, 0.35)', backdropFilter: 'blur(6px)' }}
+                            onClick={() => !isSaving && setShowSaveModal(false)}
+                        >
+                            <motion.div
+                                initial={{ opacity: 0, y: 20, scale: 0.96 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: 10, scale: 0.96 }}
+                                transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                                onClick={(e) => e.stopPropagation()}
+                                className="glass-light rounded-3xl p-7 md:p-8 w-full max-w-sm relative overflow-hidden"
+                                style={{ background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(20px)' }}
+                            >
+                                <button
+                                    onClick={() => !isSaving && setShowSaveModal(false)}
+                                    className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+                                >
+                                    <X size={18} />
+                                </button>
+
+                                {saveSuccess ? (
+                                    <div className="text-center py-6">
+                                        <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto mb-3 border border-emerald-100">
+                                            <CheckCircle className="w-6 h-6 text-emerald-500" />
+                                        </div>
+                                        <p className="font-bold text-highlight-dark text-sm">Roadmap Saved!</p>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div className="w-11 h-11 rounded-2xl flex items-center justify-center mb-4" style={{ background: 'linear-gradient(135deg, #10B981, #059669)' }}>
+                                            <Save className="w-5 h-5 text-white" />
+                                        </div>
+                                        <h3 className="text-lg font-extrabold text-highlight-dark mb-1">Save This Roadmap</h3>
+                                        <p className="text-xs text-muted mb-5">Give it a name so you can find it later in your history.</p>
+
+                                        <input
+                                            type="text"
+                                            autoFocus
+                                            value={saveName}
+                                            onChange={(e) => setSaveName(e.target.value)}
+                                            onKeyDown={(e) => e.key === 'Enter' && handleSaveRoadmap()}
+                                            placeholder={`e.g. ${topic} Plan`}
+                                            className="input-light mb-5"
+                                        />
+
+                                        <motion.button
+                                            whileHover={{ scale: 1.02 }}
+                                            whileTap={{ scale: 0.98 }}
+                                            onClick={handleSaveRoadmap}
+                                            disabled={isSaving || !saveName.trim()}
+                                            className="w-full py-3.5 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                                            style={{ background: 'linear-gradient(135deg, #10B981, #059669)', boxShadow: '0 6px 20px rgba(16, 185, 129, 0.25)' }}
+                                        >
+                                            {isSaving ? (
+                                                <>
+                                                    <Loader2 size={16} className="animate-spin" /> Saving...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Save size={16} /> Save Roadmap
+                                                </>
+                                            )}
+                                        </motion.button>
+                                    </>
+                                )}
+                            </motion.div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
                 {/* Tab Navigation */}
                 <div className="flex border-b border-gray-200/60 mb-6 gap-1">
                     {[
@@ -368,7 +486,7 @@ export default function Dashboard({ finalPlan, setStep }) {
                             className={`flex items-center gap-2 px-5 py-3 font-semibold text-sm transition-all border-b-2 ${activeTab === tab.id
                                 ? 'border-[var(--brand-orange)] text-highlight-orange'
                                 : 'border-transparent text-muted hover:text-gray-700'
-                            }`}
+                                }`}
                         >
                             <tab.icon className="w-4 h-4" /> {tab.label}
                         </button>
@@ -400,7 +518,7 @@ export default function Dashboard({ finalPlan, setStep }) {
                                             className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all duration-200 ${isSelected
                                                 ? 'bg-orange-50/80 border border-orange-200/60 shadow-sm'
                                                 : 'bg-white/60 border border-transparent hover:border-orange-100 hover:bg-white/80'
-                                            }`}
+                                                }`}
                                         >
                                             {/* Timeline Node */}
                                             <div className={`timeline-node ${isSelected
@@ -408,7 +526,7 @@ export default function Dashboard({ finalPlan, setStep }) {
                                                 : isDayRevision
                                                     ? 'timeline-node-revision'
                                                     : 'timeline-node-default'
-                                            }`}>
+                                                }`}>
                                                 D{day.day}
                                             </div>
 
@@ -554,12 +672,12 @@ export default function Dashboard({ finalPlan, setStep }) {
                                                                 className={`p-3.5 rounded-xl border transition-all duration-200 flex items-start gap-3 cursor-pointer ${isChecked
                                                                     ? 'bg-gray-50 border-gray-200/60 opacity-50'
                                                                     : 'bg-white/60 border-gray-100 hover:border-orange-200 hover:shadow-sm'
-                                                                }`}
+                                                                    }`}
                                                             >
                                                                 <div className={`mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all duration-200 ${isChecked
                                                                     ? 'bg-blue-500 border-blue-500 text-white'
                                                                     : 'border-gray-300'
-                                                                }`}>
+                                                                    }`}>
                                                                     {isChecked && <CheckCircle size={12} />}
                                                                 </div>
                                                                 <span className={`text-sm leading-relaxed ${isChecked ? 'line-through text-gray-400' : 'text-gray-700 font-medium'}`}>
