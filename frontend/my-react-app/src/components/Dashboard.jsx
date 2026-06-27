@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import {
     Calendar, CheckSquare, PlayCircle, Award, Clock, ArrowLeft, BookOpen,
@@ -26,6 +26,52 @@ export default function Dashboard({ finalPlan, setStep, userId }) {
     const [saveName, setSaveName] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
+
+    // ─── Load completed tasks from Firebase on mount ───
+    useEffect(() => {
+        if (!userId || !finalPlan) return;
+
+        // Use roadmap id or topic as unique key for this roadmap's progress
+        const roadmapKey = finalPlan?.id || topic.replace(/\s+/g, '_').toLowerCase();
+
+        const loadProgress = async () => {
+            try {
+                const progressRef = doc(db, 'users', userId, 'progress', roadmapKey);
+                const snap = await getDoc(progressRef);
+                if (snap.exists()) {
+                    setCompletedTasks(snap.data().completedTasks || {});
+                }
+            } catch (err) {
+                console.error('Failed to load progress:', err);
+            }
+        };
+
+        loadProgress();
+    }, [userId, finalPlan, topic]);
+
+    // ─── Save completed tasks to Firebase whenever they change ───
+    useEffect(() => {
+        if (!userId || !finalPlan || Object.keys(completedTasks).length === 0) return;
+
+        const roadmapKey = finalPlan?.id || topic.replace(/\s+/g, '_').toLowerCase();
+
+        const saveProgress = async () => {
+            try {
+                const progressRef = doc(db, 'users', userId, 'progress', roadmapKey);
+                await setDoc(progressRef, {
+                    completedTasks,
+                    topic,
+                    updatedAt: serverTimestamp()
+                }, { merge: true });
+            } catch (err) {
+                console.error('Failed to save progress:', err);
+            }
+        };
+
+        // Debounce - 800ms delay to avoid too many writes
+        const timer = setTimeout(saveProgress, 800);
+        return () => clearTimeout(timer);
+    }, [completedTasks, userId, finalPlan, topic]);
 
     const handleSaveRoadmap = async () => {
         if (!saveName.trim() || !userId) return;
@@ -57,6 +103,21 @@ export default function Dashboard({ finalPlan, setStep, userId }) {
         const key = `${dayNumber}-${taskIndex}`;
         setCompletedTasks(prev => ({ ...prev, [key]: !prev[key] }));
     };
+
+    // ─── Helper: get completed task count for a given day ───
+    const getDayCompletedCount = (day) => {
+        const tasks = day.tasks || [];
+        return tasks.filter((_, tIdx) => !!completedTasks[`${day.day}-${tIdx}`]).length;
+    };
+
+    // ─── Helper: total completed tasks across ALL days ───
+    const totalCompletedTasks = useMemo(() => {
+        return roadmap.reduce((sum, day) => sum + getDayCompletedCount(day), 0);
+    }, [completedTasks, roadmap]);
+
+    const totalTasks = useMemo(() => {
+        return roadmap.reduce((sum, day) => sum + (day.tasks?.length || 0), 0);
+    }, [roadmap]);
 
     const getEmbedUrl = (resource) => {
         const url = resource?.embed_url || resource?.url || '';
@@ -247,10 +308,7 @@ export default function Dashboard({ finalPlan, setStep, userId }) {
                                             key={tIdx}
                                             whileHover={{ x: 3 }}
                                             onClick={() => toggleTask(fullViewDayData.day, tIdx)}
-                                            className={`p-3.5 rounded-xl border transition-all duration-200 flex items-start gap-3 cursor-pointer ${isChecked
-                                                ? 'opacity-50 border-gray-200 bg-gray-50'
-                                                : 'border-gray-100 bg-white hover:border-orange-200 hover:shadow-sm'
-                                                }`}
+                                            className="p-3.5 rounded-xl border border-gray-100 bg-white hover:border-orange-200 hover:shadow-sm transition-all duration-200 flex items-start gap-3 cursor-pointer"
                                         >
                                             <div className={`mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all duration-200 ${isChecked
                                                 ? 'bg-blue-500 border-blue-500 text-white'
@@ -258,7 +316,7 @@ export default function Dashboard({ finalPlan, setStep, userId }) {
                                                 }`}>
                                                 {isChecked && <CheckCircle size={12} />}
                                             </div>
-                                            <span className={`text-sm leading-relaxed ${isChecked ? 'line-through text-gray-400' : 'text-gray-700 font-medium'}`}>
+                                            <span className="text-sm leading-relaxed text-gray-700 font-medium">
                                                 {task}
                                             </span>
                                         </motion.div>
@@ -267,64 +325,50 @@ export default function Dashboard({ finalPlan, setStep, userId }) {
                             </div>
                         </div>
 
-                        {/* Right: Resources & Briefing */}
+                        {/* Right: Resources */}
                         <div className="md:col-span-2 space-y-5">
-                            <h3 className="text-xs font-bold text-muted uppercase tracking-wider flex items-center gap-1.5 mb-1">
-                                <BookOpen className="w-4 h-4 text-highlight-orange" /> Study Materials & Briefing
-                            </h3>
-
-                            {fullViewDayData.resources?.length > 0 ? (
-                                fullViewDayData.resources.map((resource, rIdx) => {
-                                    const embedUrl = getEmbedUrl(resource);
-                                    return (
-                                        <div key={rIdx} className="glass-light rounded-2xl p-5 space-y-4">
-                                            <div>
-                                                <h4 className="font-bold text-highlight-dark text-base">{resource.title}</h4>
-                                                <p className="text-sm text-muted mt-1 leading-relaxed">{resource.summary || 'No extensive summaries provided.'}</p>
-                                            </div>
-                                            {embedUrl ? (
-                                                <div className="aspect-video w-full rounded-xl overflow-hidden border border-gray-200 bg-black shadow-lg">
-                                                    <iframe
-                                                        className="w-full h-full"
-                                                        src={embedUrl}
-                                                        title={resource.title}
-                                                        frameBorder="0"
-                                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                                        allowFullScreen
-                                                    />
+                            {!isFullRevisionDay && fullViewDayData.resources?.length > 0 && (
+                                <div>
+                                    <h3 className="text-xs font-bold text-muted uppercase tracking-wider flex items-center gap-1.5 mb-3">
+                                        <PlayCircle className="w-4 h-4 text-red-500" /> Video Resources
+                                    </h3>
+                                    <div className="space-y-4">
+                                        {fullViewDayData.resources.map((resource, rIdx) => {
+                                            const embedUrl = getEmbedUrl(resource);
+                                            return (
+                                                <div key={rIdx} className="rounded-xl border border-gray-100 bg-white/80 p-4 shadow-sm">
+                                                    <h4 className="font-bold text-highlight-dark text-sm mb-1">{resource.title}</h4>
+                                                    <p className="text-xs text-muted mb-3">{resource.summary}</p>
+                                                    {embedUrl ? (
+                                                        <div className="aspect-video w-full rounded-xl overflow-hidden border border-gray-200 bg-black shadow-inner">
+                                                            <iframe className="w-full h-full" src={embedUrl} title={resource.title} frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+                                                        </div>
+                                                    ) : (
+                                                        <a href={resource.embed_url || resource.url} target="_blank" rel="noopener noreferrer" className="btn-primary text-xs inline-flex">
+                                                            Open Resource <ExternalLink size={12} />
+                                                        </a>
+                                                    )}
                                                 </div>
-                                            ) : (
-                                                <a
-                                                    href={resource.embed_url || resource.url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="btn-primary text-xs inline-flex"
-                                                >
-                                                    Open Resource <ExternalLink size={12} />
-                                                </a>
-                                            )}
-                                        </div>
-                                    );
-                                })
-                            ) : (
-                                <div className="glass-light rounded-2xl p-6 text-center italic text-muted text-sm">
-                                    No specific resources for this block. Focus on implementation challenges!
+                                            );
+                                        })}
+                                    </div>
                                 </div>
                             )}
 
-                            {/* Core Concepts */}
-                            <div className="bg-gray-50 border border-gray-100 rounded-xl p-5">
-                                <h4 className="text-xs font-bold text-highlight-dark mb-3 uppercase tracking-wider">Key Concepts to Retain</h4>
+                            <div>
+                                <h3 className="text-xs font-bold text-muted uppercase tracking-wider flex items-center gap-1.5 mb-3">
+                                    <BookOpen className="w-4 h-4 text-highlight-orange" /> Core Concepts
+                                </h3>
                                 <ul className="space-y-2">
                                     {(fullViewDayData.topics || []).map((tp, i) => (
                                         <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
                                             <CheckCircle size={14} className="text-emerald-500 mt-0.5 flex-shrink-0" />
-                                            Deep-dive technical patterns of <span className="font-semibold text-highlight-dark">{tp}</span>
+                                            Deep-dive architecture of <span className="font-semibold text-highlight-dark">{tp}</span>
                                         </li>
                                     ))}
                                     <li className="flex items-start gap-2 text-sm text-gray-600">
                                         <CheckCircle size={14} className="text-emerald-500 mt-0.5 flex-shrink-0" />
-                                        Clean formatting, syntax adherence, and modular integration.
+                                        Implement practical hands-on patterns.
                                     </li>
                                 </ul>
                             </div>
@@ -498,7 +542,16 @@ export default function Dashboard({ finalPlan, setStep, userId }) {
 
                     {/* ─── LEFT: Timeline Day List ─── */}
                     <div className="lg:col-span-4 relative">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted px-1 mb-3">Your Course Schedule</p>
+                        <div className="flex items-center justify-between px-1 mb-3">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-muted">Your Course Schedule</p>
+                            {/* ── Overall progress pill ── */}
+                            {totalTasks > 0 && (
+                                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-full flex items-center gap-1">
+                                    <CheckCircle className="w-3 h-3" />
+                                    {totalCompletedTasks}/{totalTasks} done
+                                </span>
+                            )}
+                        </div>
 
                         {/* Timeline container */}
                         <div className="relative max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
@@ -509,6 +562,9 @@ export default function Dashboard({ finalPlan, setStep, userId }) {
                                 {roadmap.map((day, index) => {
                                     const isSelected = selectedDayIndex === index;
                                     const isDayRevision = day.day > embedDay;
+                                    const dayTotal = day.tasks?.length || 0;
+                                    const dayDone = getDayCompletedCount(day);
+                                    const dayAllDone = dayTotal > 0 && dayDone === dayTotal;
 
                                     return (
                                         <motion.button
@@ -521,13 +577,15 @@ export default function Dashboard({ finalPlan, setStep, userId }) {
                                                 }`}
                                         >
                                             {/* Timeline Node */}
-                                            <div className={`timeline-node ${isSelected
-                                                ? 'timeline-node-active'
-                                                : isDayRevision
-                                                    ? 'timeline-node-revision'
-                                                    : 'timeline-node-default'
+                                            <div className={`timeline-node flex-shrink-0 ${dayAllDone
+                                                ? 'timeline-node-done'
+                                                : isSelected
+                                                    ? 'timeline-node-active'
+                                                    : isDayRevision
+                                                        ? 'timeline-node-revision'
+                                                        : 'timeline-node-default'
                                                 }`}>
-                                                D{day.day}
+                                                {dayAllDone ? <CheckCircle size={12} /> : `D${day.day}`}
                                             </div>
 
                                             {/* Day Info */}
@@ -540,12 +598,30 @@ export default function Dashboard({ finalPlan, setStep, userId }) {
                                                 </p>
                                             </div>
 
-                                            {/* Revision Badge */}
-                                            {isDayRevision && (
-                                                <span className="badge-purple text-[9px] px-2 py-0.5 flex-shrink-0">
-                                                    Revision
-                                                </span>
-                                            )}
+                                            {/* Right side: progress badge OR revision badge */}
+                                            <div className="flex-shrink-0 flex flex-col items-end gap-1">
+                                                {isDayRevision && (
+                                                    <span className="badge-purple text-[9px] px-2 py-0.5">
+                                                        Revision
+                                                    </span>
+                                                )}
+                                                {dayTotal > 0 && (
+                                                    <div className="flex items-center gap-1">
+                                                        {/* Mini progress bar */}
+                                                        <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                                            <motion.div
+                                                                className={`h-full rounded-full ${dayAllDone ? 'bg-emerald-500' : 'bg-orange-400'}`}
+                                                                initial={{ width: 0 }}
+                                                                animate={{ width: `${(dayDone / dayTotal) * 100}%` }}
+                                                                transition={{ duration: 0.4 }}
+                                                            />
+                                                        </div>
+                                                        <span className={`text-[10px] font-bold tabular-nums ${dayAllDone ? 'text-emerald-600' : 'text-gray-500'}`}>
+                                                            {dayDone}/{dayTotal}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </motion.button>
                                     );
                                 })}
@@ -669,10 +745,7 @@ export default function Dashboard({ finalPlan, setStep, userId }) {
                                                                 key={tIdx}
                                                                 whileHover={{ x: 3 }}
                                                                 onClick={() => toggleTask(currentDayData.day, tIdx)}
-                                                                className={`p-3.5 rounded-xl border transition-all duration-200 flex items-start gap-3 cursor-pointer ${isChecked
-                                                                    ? 'bg-gray-50 border-gray-200/60 opacity-50'
-                                                                    : 'bg-white/60 border-gray-100 hover:border-orange-200 hover:shadow-sm'
-                                                                    }`}
+                                                                className="p-3.5 rounded-xl border border-gray-100 bg-white/60 hover:border-orange-200 hover:shadow-sm transition-all duration-200 flex items-start gap-3 cursor-pointer"
                                                             >
                                                                 <div className={`mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all duration-200 ${isChecked
                                                                     ? 'bg-blue-500 border-blue-500 text-white'
@@ -680,7 +753,7 @@ export default function Dashboard({ finalPlan, setStep, userId }) {
                                                                     }`}>
                                                                     {isChecked && <CheckCircle size={12} />}
                                                                 </div>
-                                                                <span className={`text-sm leading-relaxed ${isChecked ? 'line-through text-gray-400' : 'text-gray-700 font-medium'}`}>
+                                                                <span className="text-sm leading-relaxed text-gray-700 font-medium">
                                                                     {task}
                                                                 </span>
                                                             </motion.div>

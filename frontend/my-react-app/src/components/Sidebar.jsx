@@ -1,32 +1,27 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signOut } from 'firebase/auth';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import {
     Sparkles, LogIn, LogOut, FolderClock, User as UserIcon,
-    ChevronRight, ChevronDown, Inbox
+    ChevronRight, ChevronDown, Inbox, CheckCircle
 } from 'lucide-react';
 
-// Sidebar.jsx
-// - Shows app logo
-// - Shows user icon + name (if logged in) OR a Login button (if not)
-// - Shows Collapsible "Roadmap History" list (live from Firestore)
 export default function Sidebar({ user, onLoginClick, onSelectRoadmap }) {
     const [roadmaps, setRoadmaps] = useState([]);
-    // History එක open/close කරන්න state එක (Default: open)
     const [isHistoryOpen, setIsHistoryOpen] = useState(true);
+    const [progressMap, setProgressMap] = useState({});
 
+    // ── Live roadmap list from Firestore ──
     useEffect(() => {
-        if (!user) {
-            setRoadmaps([]);
-            return;
-        }
+        if (!user) return;
+
         const roadmapsRef = collection(db, 'users', user.uid, 'roadmaps');
         const q = query(roadmapsRef, orderBy('createdAt', 'desc'));
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            const items = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+            const items = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
             setRoadmaps(items);
         }, (err) => {
             console.error('Failed to load roadmap history:', err);
@@ -34,6 +29,53 @@ export default function Sidebar({ user, onLoginClick, onSelectRoadmap }) {
 
         return () => unsubscribe();
     }, [user]);
+
+    // ── Reset when user logs out ──
+    useEffect(() => {
+        if (!user) {
+            setRoadmaps([]);
+            setProgressMap({});
+        }
+    }, [user]);
+
+    // ── Real-time progress listeners — one per roadmap ──
+    useEffect(() => {
+        if (!user || roadmaps.length === 0) return;
+
+        const unsubscribes = roadmaps.map((rm) => {
+            const roadmapKey = rm.plan?.id || (rm.topic || '').replace(/\s+/g, '_').toLowerCase();
+            if (!roadmapKey) return null;
+
+            const progressRef = doc(db, 'users', user.uid, 'progress', roadmapKey);
+
+            return onSnapshot(progressRef, (snap) => {
+                const completedTasks = snap.exists() ? (snap.data().completedTasks || {}) : {};
+                const roadmapDays = rm.plan?.roadmap || [];
+
+                let total = 0;
+                let done = 0;
+                roadmapDays.forEach((day) => {
+                    const dayTasks = day.tasks || [];
+                    total += dayTasks.length;
+                    dayTasks.forEach((_, tIdx) => {
+                        if (completedTasks[`${day.day}-${tIdx}`]) done++;
+                    });
+                });
+
+                // Update only this roadmap — keep others intact
+                setProgressMap((prev) => ({
+                    ...prev,
+                    [rm.id]: { done, total },
+                }));
+            }, (err) => {
+                console.error(`Progress listener error for ${roadmapKey}:`, err);
+            });
+        });
+
+        return () => {
+            unsubscribes.forEach((unsub) => unsub && unsub());
+        };
+    }, [user, roadmaps]);
 
     const handleLogout = async () => {
         try {
@@ -93,22 +135,81 @@ export default function Sidebar({ user, onLoginClick, onSelectRoadmap }) {
                                     </div>
                                 )}
 
-                                {user && roadmaps.map((rm) => (
-                                    <motion.button
-                                        key={rm.id}
-                                        whileHover={{ x: 2 }}
-                                        onClick={() => onSelectRoadmap && onSelectRoadmap(rm)}
-                                        className="w-full text-left p-3 rounded-xl bg-white/60 hover:bg-white border border-gray-100/80 hover:border-orange-200/60 transition-all duration-200 flex items-center justify-between gap-2 group"
-                                    >
-                                        <div className="min-w-0">
-                                            <p className="text-xs font-bold text-highlight-dark truncate group-hover:text-[var(--brand-orange)] transition-colors">
-                                                {rm.name || rm.topic || 'Untitled Roadmap'}
-                                            </p>
-                                            <p className="text-[10px] text-muted truncate mt-0.5">{rm.topic}</p>
-                                        </div>
-                                        <ChevronRight size={14} className="text-gray-300 group-hover:text-highlight-orange flex-shrink-0 transition-colors" />
-                                    </motion.button>
-                                ))}
+                                {user && roadmaps.map((rm) => {
+                                    const progress = progressMap[rm.id];
+                                    const hasProgress = progress && progress.total > 0;
+                                    const isComplete = hasProgress && progress.done === progress.total;
+                                    const pct = hasProgress
+                                        ? Math.round((progress.done / progress.total) * 100)
+                                        : 0;
+
+                                    // SVG circle math
+                                    const radius = 16;
+                                    const circumference = 2 * Math.PI * radius;
+                                    const strokeDashoffset = circumference - (pct / 100) * circumference;
+                                    const circleColor = isComplete ? '#10B981' : '#F97316';
+
+                                    return (
+                                        <motion.button
+                                            key={rm.id}
+                                            whileHover={{ x: 2 }}
+                                            onClick={() => onSelectRoadmap && onSelectRoadmap(rm)}
+                                            className="w-full text-left p-3 rounded-xl bg-white/60 hover:bg-white border border-gray-100/80 hover:border-orange-200/60 transition-all duration-200 flex items-center gap-3 group"
+                                        >
+                                            {/* Circle Progress — left side */}
+                                            <div className="relative flex-shrink-0 w-10 h-10">
+                                                <svg width="40" height="40" viewBox="0 0 40 40" className="-rotate-90">
+                                                    {/* Track */}
+                                                    <circle
+                                                        cx="20" cy="20" r={radius}
+                                                        fill="none"
+                                                        stroke="#F3F4F6"
+                                                        strokeWidth="3.5"
+                                                    />
+                                                    {/* Progress arc */}
+                                                    {hasProgress && (
+                                                        <motion.circle
+                                                            cx="20" cy="20" r={radius}
+                                                            fill="none"
+                                                            stroke={circleColor}
+                                                            strokeWidth="3.5"
+                                                            strokeLinecap="round"
+                                                            strokeDasharray={circumference}
+                                                            initial={{ strokeDashoffset: circumference }}
+                                                            animate={{ strokeDashoffset }}
+                                                            transition={{ duration: 0.6, ease: 'easeOut' }}
+                                                        />
+                                                    )}
+                                                </svg>
+                                                {/* Center label */}
+                                                <div className="absolute inset-0 flex items-center justify-center">
+                                                    {isComplete ? (
+                                                        <CheckCircle size={13} className="text-emerald-500" />
+                                                    ) : (
+                                                        <span className={`text-[9px] font-extrabold tabular-nums leading-none ${hasProgress ? 'text-orange-500' : 'text-gray-300'}`}>
+                                                            {hasProgress ? `${pct}%` : '–'}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Text info — middle */}
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-xs font-bold text-highlight-dark truncate group-hover:text-[var(--brand-orange)] transition-colors">
+                                                    {rm.name || rm.topic || 'Untitled Roadmap'}
+                                                </p>
+                                                <p className="text-[10px] text-muted truncate mt-0.5">
+                                                    {hasProgress
+                                                        ? `${progress.done}/${progress.total} tasks`
+                                                        : rm.topic}
+                                                </p>
+                                            </div>
+
+                                            {/* Arrow — right */}
+                                            <ChevronRight size={14} className="text-gray-300 group-hover:text-highlight-orange flex-shrink-0 transition-colors" />
+                                        </motion.button>
+                                    );
+                                })}
                             </motion.div>
                         )}
                     </AnimatePresence>

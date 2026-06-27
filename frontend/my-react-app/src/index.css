@@ -81,7 +81,7 @@
     -webkit-backdrop-filter: blur(16px) saturate(1.8);
     border: 1px solid rgba(255, 255, 255, 0.7);
     box-shadow: var(--shadow-lg),
-                inset 0 1px 0 rgba(255, 255, 255, 0.6);
+      inset 0 1px 0 rgba(255, 255, 255, 0.6);
   }
 
   .glass-card {
@@ -103,9 +103,7 @@
 
   /* ── Button System ──────────────────────────────────────────── */
   .btn-primary {
-    @apply px-6 py-3 text-white rounded-xl font-bold text-sm
-           transition-all duration-200 inline-flex items-center justify-center gap-2
-           active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
+    @apply px-6 py-3 text-white rounded-xl font-bold text-sm transition-all duration-200 inline-flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
     background: linear-gradient(135deg, var(--brand-orange), #FF6B00);
     box-shadow: var(--shadow-orange);
   }
@@ -117,9 +115,7 @@
   }
 
   .btn-secondary {
-    @apply px-6 py-3 rounded-xl font-bold text-sm
-           transition-all duration-200 inline-flex items-center justify-center gap-2
-           active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply px-6 py-3 rounded-xl font-bold text-sm transition-all duration-200 inline-flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
     background: var(--surface-bg);
     color: var(--brand-dark);
     border: 1.5px solid var(--border-medium);
@@ -301,6 +297,10 @@
     box-shadow: var(--shadow-sm);
   }
 
+  .timeline-node-done {
+    @apply bg-emerald-500 border-emerald-500 text-white;
+  }
+
   .timeline-node-active {
     background: linear-gradient(135deg, var(--brand-orange), #FF6B00);
     color: white;
@@ -359,20 +359,45 @@
   }
 
   @keyframes float-drift {
-    0%, 100% { transform: translate(0, 0) scale(1); }
-    25%      { transform: translate(30px, -20px) scale(1.05); }
-    50%      { transform: translate(-20px, 20px) scale(0.95); }
-    75%      { transform: translate(15px, 10px) scale(1.02); }
+
+    0%,
+    100% {
+      transform: translate(0, 0) scale(1);
+    }
+
+    25% {
+      transform: translate(30px, -20px) scale(1.05);
+    }
+
+    50% {
+      transform: translate(-20px, 20px) scale(0.95);
+    }
+
+    75% {
+      transform: translate(15px, 10px) scale(1.02);
+    }
   }
 
   @keyframes pulse-glow {
-    0%, 100% { opacity: 1; }
-    50%      { opacity: 0.5; }
+
+    0%,
+    100% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0.5;
+    }
   }
 
   @keyframes spin-slow {
-    0%   { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+      transform: rotate(0deg);
+    }
+
+    100% {
+      transform: rotate(360deg);
+    }
   }
 
   .animate-pulse-glow {
