@@ -1,17 +1,26 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signOut } from 'firebase/auth';
-import { collection, query, orderBy, onSnapshot, doc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import {
     Sparkles, LogIn, LogOut, FolderClock, User as UserIcon,
-    ChevronRight, ChevronDown, Inbox, CheckCircle
+    ChevronRight, ChevronDown, Inbox, CheckCircle, MoreVertical,
+    Pencil, Trash2, Check, X, Loader2
 } from 'lucide-react';
 
 export default function Sidebar({ user, onLoginClick, onSelectRoadmap }) {
     const [roadmaps, setRoadmaps] = useState([]);
     const [isHistoryOpen, setIsHistoryOpen] = useState(true);
     const [progressMap, setProgressMap] = useState({});
+
+    // ── 3-dot menu / rename / delete state ──
+    const [openMenuId, setOpenMenuId] = useState(null);
+    const [renamingId, setRenamingId] = useState(null);
+    const [renameValue, setRenameValue] = useState('');
+    const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+    const [busyId, setBusyId] = useState(null);
+    const menuRef = useRef(null);
 
     // ── Live roadmap list from Firestore ──
     useEffect(() => {
@@ -77,6 +86,18 @@ export default function Sidebar({ user, onLoginClick, onSelectRoadmap }) {
         };
     }, [user, roadmaps]);
 
+    // ── Close the 3-dot menu when clicking outside it ──
+    useEffect(() => {
+        if (!openMenuId) return;
+        const handleClickOutside = (e) => {
+            if (menuRef.current && !menuRef.current.contains(e.target)) {
+                setOpenMenuId(null);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [openMenuId]);
+
     const handleLogout = async () => {
         try {
             await signOut(auth);
@@ -85,11 +106,49 @@ export default function Sidebar({ user, onLoginClick, onSelectRoadmap }) {
         }
     };
 
+    const startRename = (rm) => {
+        setRenamingId(rm.id);
+        setRenameValue(rm.name || rm.topic || '');
+        setOpenMenuId(null);
+    };
+
+    const cancelRename = () => {
+        setRenamingId(null);
+        setRenameValue('');
+    };
+
+    const confirmRename = async (rm) => {
+        const trimmed = renameValue.trim();
+        if (!trimmed || !user) return cancelRename();
+        setBusyId(rm.id);
+        try {
+            await updateDoc(doc(db, 'users', user.uid, 'roadmaps', rm.id), { name: trimmed });
+        } catch (err) {
+            console.error('Rename failed:', err);
+        } finally {
+            setBusyId(null);
+            cancelRename();
+        }
+    };
+
+    const handleDelete = async (rm) => {
+        if (!user) return;
+        setBusyId(rm.id);
+        try {
+            await deleteDoc(doc(db, 'users', user.uid, 'roadmaps', rm.id));
+        } catch (err) {
+            console.error('Delete failed:', err);
+        } finally {
+            setBusyId(null);
+            setConfirmDeleteId(null);
+        }
+    };
+
     return (
         <aside className="w-64 h-screen sticky top-0 flex flex-col glass-light border-r border-gray-100/80 flex-shrink-0">
 
             {/* Logo */}
-            <div className="flex items-center gap-2.5 p-5 border-b border-gray-100/80">
+            <div className="flex items-center gap-2.5 p-5 border-b border-gray-100/80 flex-shrink-0">
                 <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[var(--brand-orange)] to-[#FF6B00] flex items-center justify-center shadow-md">
                     <Sparkles className="text-white w-5 h-5" />
                 </div>
@@ -97,7 +156,7 @@ export default function Sidebar({ user, onLoginClick, onSelectRoadmap }) {
             </div>
 
             {/* Roadmap History Container */}
-            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+            <div className="flex-1 min-h-0 overflow-y-auto p-4 custom-scrollbar">
 
                 {/* Header Button to Toggle Accordion */}
                 <button
@@ -149,65 +208,134 @@ export default function Sidebar({ user, onLoginClick, onSelectRoadmap }) {
                                     const strokeDashoffset = circumference - (pct / 100) * circumference;
                                     const circleColor = isComplete ? '#10B981' : '#F97316';
 
+                                    const isRenaming = renamingId === rm.id;
+                                    const isConfirmingDelete = confirmDeleteId === rm.id;
+                                    const isBusy = busyId === rm.id;
+
                                     return (
-                                        <motion.button
-                                            key={rm.id}
-                                            whileHover={{ x: 2 }}
-                                            onClick={() => onSelectRoadmap && onSelectRoadmap(rm)}
-                                            className="w-full text-left p-3 rounded-xl bg-white/60 hover:bg-white border border-gray-100/80 hover:border-orange-200/60 transition-all duration-200 flex items-center gap-3 group"
-                                        >
-                                            {/* Circle Progress — left side */}
-                                            <div className="relative flex-shrink-0 w-10 h-10">
-                                                <svg width="40" height="40" viewBox="0 0 40 40" className="-rotate-90">
-                                                    {/* Track */}
-                                                    <circle
-                                                        cx="20" cy="20" r={radius}
-                                                        fill="none"
-                                                        stroke="#F3F4F6"
-                                                        strokeWidth="3.5"
-                                                    />
-                                                    {/* Progress arc */}
-                                                    {hasProgress && (
-                                                        <motion.circle
-                                                            cx="20" cy="20" r={radius}
-                                                            fill="none"
-                                                            stroke={circleColor}
-                                                            strokeWidth="3.5"
-                                                            strokeLinecap="round"
-                                                            strokeDasharray={circumference}
-                                                            initial={{ strokeDashoffset: circumference }}
-                                                            animate={{ strokeDashoffset }}
-                                                            transition={{ duration: 0.6, ease: 'easeOut' }}
-                                                        />
-                                                    )}
-                                                </svg>
-                                                {/* Center label */}
-                                                <div className="absolute inset-0 flex items-center justify-center">
-                                                    {isComplete ? (
-                                                        <CheckCircle size={13} className="text-emerald-500" />
+                                        <div key={rm.id} className="relative">
+                                            <motion.div
+                                                whileHover={{ x: isRenaming || isConfirmingDelete ? 0 : 2 }}
+                                                onClick={() => !isRenaming && !isConfirmingDelete && onSelectRoadmap && onSelectRoadmap(rm)}
+                                                className={`w-full text-left p-3 rounded-xl bg-white/60 border border-gray-100/80 flex items-center gap-3 group transition-all duration-200 ${isRenaming || isConfirmingDelete ? '' : 'hover:bg-white hover:border-orange-200/60 cursor-pointer'
+                                                    }`}
+                                            >
+                                                {/* Circle Progress — left side */}
+                                                <div className="relative flex-shrink-0 w-10 h-10">
+                                                    <svg width="40" height="40" viewBox="0 0 40 40" className="-rotate-90">
+                                                        <circle cx="20" cy="20" r={radius} fill="none" stroke="#F3F4F6" strokeWidth="3.5" />
+                                                        {hasProgress && (
+                                                            <motion.circle
+                                                                cx="20" cy="20" r={radius}
+                                                                fill="none"
+                                                                stroke={circleColor}
+                                                                strokeWidth="3.5"
+                                                                strokeLinecap="round"
+                                                                strokeDasharray={circumference}
+                                                                initial={{ strokeDashoffset: circumference }}
+                                                                animate={{ strokeDashoffset }}
+                                                                transition={{ duration: 0.6, ease: 'easeOut' }}
+                                                            />
+                                                        )}
+                                                    </svg>
+                                                    <div className="absolute inset-0 flex items-center justify-center">
+                                                        {isComplete ? (
+                                                            <CheckCircle size={13} className="text-emerald-500" />
+                                                        ) : (
+                                                            <span className={`text-[9px] font-extrabold tabular-nums leading-none ${hasProgress ? 'text-orange-500' : 'text-gray-300'}`}>
+                                                                {hasProgress ? `${pct}%` : '–'}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {/* Text info / Rename input / Delete confirm — middle */}
+                                                <div className="min-w-0 flex-1" onClick={(e) => (isRenaming || isConfirmingDelete) && e.stopPropagation()}>
+                                                    {isRenaming ? (
+                                                        <div className="flex items-center gap-1.5">
+                                                            <input
+                                                                autoFocus
+                                                                value={renameValue}
+                                                                onChange={(e) => setRenameValue(e.target.value)}
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter') confirmRename(rm);
+                                                                    if (e.key === 'Escape') cancelRename();
+                                                                }}
+                                                                className="w-full text-xs font-bold text-highlight-dark bg-white border border-orange-200 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-orange-100"
+                                                            />
+                                                            <button onClick={() => confirmRename(rm)} className="p-1 rounded-md hover:bg-emerald-50 text-emerald-500 flex-shrink-0">
+                                                                {isBusy ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
+                                                            </button>
+                                                            <button onClick={cancelRename} className="p-1 rounded-md hover:bg-gray-100 text-gray-400 flex-shrink-0">
+                                                                <X size={13} />
+                                                            </button>
+                                                        </div>
+                                                    ) : isConfirmingDelete ? (
+                                                        <div className="flex items-center gap-1.5">
+                                                            <p className="text-[11px] font-semibold text-red-500 flex-1">Delete this roadmap?</p>
+                                                            <button
+                                                                onClick={() => handleDelete(rm)}
+                                                                className="px-2 py-1 rounded-md bg-red-500 text-white text-[10px] font-bold flex-shrink-0 flex items-center gap-1"
+                                                            >
+                                                                {isBusy ? <Loader2 size={11} className="animate-spin" /> : 'Delete'}
+                                                            </button>
+                                                            <button onClick={() => setConfirmDeleteId(null)} className="p-1 rounded-md hover:bg-gray-100 text-gray-400 flex-shrink-0">
+                                                                <X size={13} />
+                                                            </button>
+                                                        </div>
                                                     ) : (
-                                                        <span className={`text-[9px] font-extrabold tabular-nums leading-none ${hasProgress ? 'text-orange-500' : 'text-gray-300'}`}>
-                                                            {hasProgress ? `${pct}%` : '–'}
-                                                        </span>
+                                                        <>
+                                                            <p className="text-xs font-bold text-highlight-dark truncate group-hover:text-[var(--brand-orange)] transition-colors">
+                                                                {rm.name || rm.topic || 'Untitled Roadmap'}
+                                                            </p>
+                                                            <p className="text-[10px] text-muted truncate mt-0.5">
+                                                                {hasProgress ? `${progress.done}/${progress.total} tasks` : rm.topic}
+                                                            </p>
+                                                        </>
                                                     )}
                                                 </div>
-                                            </div>
 
-                                            {/* Text info — middle */}
-                                            <div className="min-w-0 flex-1">
-                                                <p className="text-xs font-bold text-highlight-dark truncate group-hover:text-[var(--brand-orange)] transition-colors">
-                                                    {rm.name || rm.topic || 'Untitled Roadmap'}
-                                                </p>
-                                                <p className="text-[10px] text-muted truncate mt-0.5">
-                                                    {hasProgress
-                                                        ? `${progress.done}/${progress.total} tasks`
-                                                        : rm.topic}
-                                                </p>
-                                            </div>
+                                                {/* 3-dot menu trigger — right (replaces arrow) */}
+                                                {!isRenaming && !isConfirmingDelete && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setOpenMenuId(openMenuId === rm.id ? null : rm.id);
+                                                        }}
+                                                        className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-300 group-hover:text-gray-500 flex-shrink-0 transition-colors"
+                                                    >
+                                                        <MoreVertical size={15} />
+                                                    </button>
+                                                )}
+                                            </motion.div>
 
-                                            {/* Arrow — right */}
-                                            <ChevronRight size={14} className="text-gray-300 group-hover:text-highlight-orange flex-shrink-0 transition-colors" />
-                                        </motion.button>
+                                            {/* Dropdown menu */}
+                                            <AnimatePresence>
+                                                {openMenuId === rm.id && (
+                                                    <motion.div
+                                                        ref={menuRef}
+                                                        initial={{ opacity: 0, y: -6, scale: 0.96 }}
+                                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                                        exit={{ opacity: 0, y: -6, scale: 0.96 }}
+                                                        transition={{ duration: 0.15 }}
+                                                        className="absolute right-2 top-full mt-1 z-20 w-40 bg-white rounded-xl border border-gray-100 shadow-lg overflow-hidden"
+                                                    >
+                                                        <button
+                                                            onClick={() => startRename(rm)}
+                                                            className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-semibold text-highlight-dark hover:bg-gray-50 transition-colors"
+                                                        >
+                                                            <Pencil size={13} className="text-blue-500" /> Rename Roadmap
+                                                        </button>
+                                                        <button
+                                                            onClick={() => { setConfirmDeleteId(rm.id); setOpenMenuId(null); }}
+                                                            className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-semibold text-red-500 hover:bg-red-50 transition-colors border-t border-gray-100"
+                                                        >
+                                                            <Trash2 size={13} /> Delete Roadmap
+                                                        </button>
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+                                        </div>
                                     );
                                 })}
                             </motion.div>
@@ -217,7 +345,7 @@ export default function Sidebar({ user, onLoginClick, onSelectRoadmap }) {
             </div>
 
             {/* User Profile / Login */}
-            <div className="p-4 border-t border-gray-100/80">
+            <div className="p-4 border-t border-gray-100/80 flex-shrink-0">
                 {user ? (
                     <div className="flex items-center gap-3 p-2.5 rounded-xl bg-white/60 border border-gray-100/80">
                         {user.photoURL ? (
